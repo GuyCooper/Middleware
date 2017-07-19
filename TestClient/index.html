@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Middleware Test Page</title>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to Middleware Test</h2>
+        <div>
+            <label>Connect to Server</label>
+            <input type="button" id="connect" value="Connect" onclick="connectToServer()" />
+        </div>
+
+        <div>
+            <input id="testInput" type="text" />
+            <input id="testButton" type="button" disabled="disabled" onclick="sendData()" value="Send"/>
+        </div>
+        <div>
+            <label>Result: </label>
+            <span id="result"></span>
+        </div>
+        <div>
+            <input type="button" onclick="doArray()" value="Do Array"/>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var ws;
+        connectToServer = function () {
+            ws = new WebSocket("ws://localhost:8080");
+
+            ws.onopen = function () {
+                document.getElementById("testButton").disabled = "";
+            };
+            ws.onerror = function (error) {
+                alert("error: " + error);
+            };
+            ws.onmessage = function (data) {
+                document.getElementById("result").innerText = data.data;
+            };
+        }
+
+
+        sendData = function () {
+            var data = document.getElementById("testInput").value;
+            ws.send(data);
+        }
+
+        
+        doArray = function () {
+            var serialised = "USERNAME\r\nPASSWORD\r\nLOGIN";
+
+            var count = 0;
+            var res = {};
+            var arr = serialised.split('\n');
+            arr.forEach(function (arg) {
+                res[arg.trim()] = count++;
+            });
+
+            var match = res["PASSWORD"];
+        }
+
+    </script>
+</body>
+</html>
