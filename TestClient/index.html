@@ -4,63 +4,112 @@
 <head>
     <meta charset="utf-8" />
     <title>Middleware Test Page</title>
+    <style type="text/css">
+        .row {
+            margin:5px;
+        }
+
+        .send-box{
+           border:1px solid black;
+           margin: 5px;
+           padding: 2px;
+        }
+        #action {
+            display: none;
+        }
+    </style>
+    <script type="text/javascript" src="scripts/require.js"></script>
+    <script type="text/javascript" src="scripts/MiddleWareClient.js"></script>
+    <script type="text/javascript">
+        var mw = new MiddleWare();
+
+        var onConnected = function() {
+            document.getElementById('action').style.display = 'block';
+        };
+
+        var onError = function(error) {
+            alert("error: " + error);
+        };
+
+        var onMessage = function (message) {
+
+        };
+
+        connectToServer = function () {
+            mw.Connect("ws://localhost:8080", onConnected, onError, onMessage);
+        };
+
+
+        //sendData = function () {
+        //    var data = document.getElementById("testInput").value;
+        //    ws.send(data);
+        //}
+
+
+        //doArray = function () {
+        //    var serialised = "USERNAME\r\nPASSWORD\r\nLOGIN";
+
+        //    var count = 0;
+        //    var res = {};
+        //    var arr = serialised.split('\n');
+        //    arr.forEach(function (arg) {
+        //        res[arg.trim()] = count++;
+        //    });
+
+        //    var match = res["PASSWORD"];
+        //}
+
+        addSubscriber = function () {
+            document.getElementById("sendrequestbutton").disabled = "";
+        }
+        addListener = function () {
+            var channel = document.getElementById("channel").value;
+            mw.AddListener(channel).then(() => {
+                alert("add listener succedded :-)")
+            },
+            (error) => {
+                alert("add listener failed :-)")
+            });
+        }
+    </script>
 </head>
 <body>
     <div class="container">
         <h2>Welcome to Middleware Test</h2>
-        <div>
-            <label>Connect to Server</label>
+        <div class="row">
             <input type="button" id="connect" value="Connect" onclick="connectToServer()" />
         </div>
-
-        <div>
-            <input id="testInput" type="text" />
-            <input id="testButton" type="button" disabled="disabled" onclick="sendData()" value="Send"/>
-        </div>
-        <div>
-            <label>Result: </label>
-            <span id="result"></span>
-        </div>
-        <div>
-            <input type="button" onclick="doArray()" value="Do Array"/>
-        </div>
+        <div id="action">
+            <div class="row">
+                <label>Channel Name</label>
+                <input type="text" id="channel" />
+            </div>
+            <div class="row">
+                <input type="button" id="listen" value="Add Listener" onclick="addListener()" />
+            </div>
+            <div class="row">
+                <input type="button" id="subscribe" value="Add Subscriber" onclick="addSubscriber()" />
+            </div>
+            <div class="send-box">
+                <label>Send Request</label>
+                <div class="row">
+                    <input type="text" id="sendrequest" />
+                    <input type="button" value="Send Request" onclick="sendRequest" id="sendrequestbutton" disabled="disabled" />
+                </div>
+            </div>
+            <div class="send-box">
+                <div class="row">
+                    <label>Recieved</label>
+                    <input type="text" id="recieved" readonly="readonly" />
+                </div>
+                <div class="row">
+                    <label>Send Response</label>
+                    <input type="text" id="sendresponse" />
+                    <input type="button" value="Send Response" onclick="sendResponse" id="sendresponsebutton" disabled="disabled" />
+                </div>
+            </div>
+        </div> 
     </div>
-    <script type="text/javascript">
-        var ws;
-        connectToServer = function () {
-            ws = new WebSocket("ws://localhost:8080");
-
-            ws.onopen = function () {
-                document.getElementById("testButton").disabled = "";
-            };
-            ws.onerror = function (error) {
-                alert("error: " + error);
-            };
-            ws.onmessage = function (data) {
-                document.getElementById("result").innerText = data.data;
-            };
-        }
-
-
-        sendData = function () {
-            var data = document.getElementById("testInput").value;
-            ws.send(data);
-        }
-
-        
-        doArray = function () {
-            var serialised = "USERNAME\r\nPASSWORD\r\nLOGIN";
-
-            var count = 0;
-            var res = {};
-            var arr = serialised.split('\n');
-            arr.forEach(function (arg) {
-                res[arg.trim()] = count++;
-            });
-
-            var match = res["PASSWORD"];
-        }
-
-    </script>
+    
 </body>
 </html>

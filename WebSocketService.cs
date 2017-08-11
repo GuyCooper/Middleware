@@ -47,7 +47,14 @@ namespace Middleware
             }
         }
 
-        public async void SendData(Message message)
+        private async void _SendDataToClient(string payload)
+        {
+            var encoded = Encoding.UTF8.GetBytes(payload);
+            var buffer = new ArraySegment<Byte>(encoded, 0, encoded.Length);
+            await _socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
+        public void SendData(Message message)
         {
             //first ensure that this message is for this endpoint unless it is
             //a broadcast message
@@ -58,9 +65,48 @@ namespace Middleware
 
             //ensure that the Source endpoint member is NT serialised
             var payload = JsonConvert.SerializeObject(message);
-            var encoded = Encoding.UTF8.GetBytes(payload);
-            var buffer = new ArraySegment<Byte>(encoded, 0, encoded.Length);
-            await _socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+            _SendDataToClient(payload);
+        }
+
+        public void OnError(Message message, string error)
+        {
+            //do not send responses back to client for broadcast message types
+            //i.e. if message type is an update
+            if (message.Type == MessageType.UPDATE)
+            {
+                return;
+            }
+
+            //Send error response to client
+            var response = new Message
+            {
+                Type = MessageType.RESPONSE_ERROR,
+                RequestId = message.RequestId,
+                Payload = error
+            };
+
+            var payload = JsonConvert.SerializeObject(response);
+            _SendDataToClient(payload);
+        }
+
+        public void OnSucess(Message message)
+        {
+            //do not send responses back to client for broadcast message types
+            //i.e. if message type is an update
+            if(message.Type == MessageType.UPDATE)
+            {
+                return;
+            }
+
+            //send a success response back to the client
+            var response = new Message
+            {
+                Type = MessageType.RESPONSE_SUCCESS,
+                RequestId = message.RequestId
+            };
+            var payload = JsonConvert.SerializeObject(response);
+
+            _SendDataToClient(payload);
         }
 
         public void EndpointClosed()

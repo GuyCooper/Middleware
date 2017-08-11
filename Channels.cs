@@ -40,6 +40,8 @@ namespace Middleware
     {
         string Id { get; }
         void SendData(Message message);
+        void OnError(Message message, string error);
+        void OnSucess(Message message);
     }
 
     interface IChannel
@@ -149,11 +151,8 @@ namespace Middleware
         private LimitedConcurrencyLevelTaskScheduler _scheduler;
         private TaskFactory _taskFactory;
 
-        Action<string> _completionCallback;
-
-        public Channels(Action<string> completionCallback)
+        public Channels()
         {
-            _completionCallback = completionCallback;
             //all methods in this class need to be executed on a single thread
 
             _scheduler = new LimitedConcurrencyLevelTaskScheduler(1);
@@ -177,11 +176,27 @@ namespace Middleware
             return channel;
         }
 
-        private void _ProcessCompletion(string channel)
+        private void _ProcessChannelCommand(Message message, Action<IChannel> command)
         {
-            if(_completionCallback != null)
+            var source = message.Source;
+            try
             {
-                _completionCallback(channel);
+                var channel = _getchannel(message.Channel);
+                command(channel);
+            }
+            catch(Exception e)
+            {
+                
+                if(source != null)
+                {
+                    source.OnError(message, e.Message);
+                }
+                return;
+            }
+
+            if(source != null)
+            {
+                source.OnSucess(message);
             }
         }
 
@@ -189,8 +204,10 @@ namespace Middleware
         {
             await _taskFactory.StartNew(() => 
             {
-                _getchannel(message.Channel).AddListener(message);
-                _ProcessCompletion(message.Channel);
+                _ProcessChannelCommand(message, (channel) =>
+                {
+                    channel.AddListener(message);
+                });
             });
         }
 
@@ -198,8 +215,10 @@ namespace Middleware
         {
             await _taskFactory.StartNew(() =>
             {
-                _getchannel(message.Channel).AddSubscriber(message);
-                _ProcessCompletion(message.Channel);
+                _ProcessChannelCommand(message, (channel) =>
+                {
+                    channel.AddSubscriber(message);
+                });
             });
         }
 
@@ -208,7 +227,11 @@ namespace Middleware
             await _taskFactory.StartNew(() =>
             {
                 _channelLookup.Remove(message.Channel);
-                _ProcessCompletion(message.Channel);
+                var source = message.Source;
+                if(source != null)
+                {
+                    source.OnSucess(message);
+                }
             });
         }
 
@@ -216,12 +239,10 @@ namespace Middleware
         {
             await _taskFactory.StartNew(() =>
             {
-                IChannel channel;
-                if (_channelLookup.TryGetValue(message.Channel, out channel) == true)
+                _ProcessChannelCommand(message, (channel) =>
                 {
                     channel.SendMessage(message);
-                }
-                _ProcessCompletion(message.Channel);
+                });
             });
         }
 
@@ -229,12 +250,10 @@ namespace Middleware
         {
             await _taskFactory.StartNew(() =>
             {
-                IChannel channel;
-                if (_channelLookup.TryGetValue(message.Channel, out channel) == true)
+                _ProcessChannelCommand(message, (channel) =>
                 {
                     channel.SendRequest(message);
-                }
-                _ProcessCompletion(message.Channel);
+                });
             });
         }
 
@@ -242,8 +261,10 @@ namespace Middleware
         {
             await _taskFactory.StartNew(() =>
             {
-                _getchannel(message.Channel).PublishMessage(message);
-                _ProcessCompletion(message.Channel);
+                _ProcessChannelCommand(message, (channel) =>
+                {
+                    channel.PublishMessage(message);
+                });
             });
         }
 
@@ -255,7 +276,6 @@ namespace Middleware
                 {
                     channel.Value.RemoveEndpoint(id);
                 }
-                _ProcessCompletion(null);
             });
         }
     }

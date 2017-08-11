@@ -8,6 +8,14 @@ using Newtonsoft.Json;
 
 namespace Middleware
 {
+    enum MessageType
+    {
+        REQUEST = 0,
+        UPDATE = 1,
+        RESPONSE_ERROR = 2,
+        RESPONSE_SUCCESS = 3
+    }
+
     class Location
     {
         string Name { get; set; }
@@ -18,16 +26,18 @@ namespace Middleware
         string SerialisePayload();
     }
 
-    [JsonObject(MemberSerialization.OptIn)]
+    //[JsonObject(MemberSerialization.OptIn)]
     class Message
     {
+        public MessageType Type { get; set; }
+        public string RequestId { get; set; }
         public string Command { get; set; }
         public string Channel { get; set; }
         [JsonIgnore]
         public IEndpoint Source { get; set; } //internal use only
         public string SourceId { get; set; }
         public string DestinationId { get; set; }
-        public string Data { get; set; }
+        public string Payload { get; set; }
     }
 
 
@@ -40,7 +50,7 @@ namespace Middleware
             int maxConnections = 3; //max number of concurrent connections
             Console.WriteLine("initialising server on port: {0}", url);
 
-            IChannel channel = new Channels(null);
+            IChannel channel = new Channels();
             IHandler publishHandler = new PublishMessageHandler(channel);
             publishHandler.AddHandler(new SendMessageHandler(channel));
             publishHandler.AddHandler(new SendRequestHandler(channel));

@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Middleware;
 using Moq;
+using Newtonsoft.Json;
 
 namespace MiddlewareTests
 {
@@ -74,7 +75,7 @@ namespace MiddlewareTests
             {
                 Channel = "TEST",
                 Command = command,
-                Data = "some data"
+                Payload = "some data"
             };
         }
         [TestMethod]
@@ -142,16 +143,8 @@ namespace MiddlewareTests
         [TestMethod]
         public void When_adding_a_null_message()
         {
-            bool exp = false;
-            try
-            {
-                var result = _testhandler.ProcessMessage(null);
-            }
-            catch(ArgumentException)
-            {
-                exp = true;
-            }
-            Assert.IsTrue(exp);
+            var result = _testhandler.ProcessMessage(null);
+            Assert.IsFalse(result);
         }
     }
 }

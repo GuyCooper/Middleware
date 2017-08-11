@@ -41,7 +41,7 @@ namespace Middleware
         {
             if(message == null || message.Command == null)
             {
-                throw new ArgumentException("no command specified for message");
+                return false;
             }
 
             if (message.Command == _Name)
