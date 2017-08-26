@@ -33,6 +33,11 @@ namespace Middleware
 
         public void DataReceived(string data)
         {
+            if(string.IsNullOrEmpty(data))
+            {
+                return;
+            }
+
             Console.WriteLine("data received on endpoint {0}, {1}", Id, data);
 
             Message message = JsonConvert.DeserializeObject<Message>(data);
@@ -43,7 +48,9 @@ namespace Middleware
             //now forward message onto handlers
             if(_handler.ProcessMessage(message) == false)
             {
-                Console.WriteLine("invalid command {0}", message.Command);
+                string error = "invalid command. " + message.Command; ;
+                Console.WriteLine(error);
+                OnError(message, error);
             }
         }
 
@@ -158,6 +165,13 @@ namespace Middleware
             }
         }
 
+        public async void HandleHttpRequest(HttpListenerResponse request, HttpListenerResponse response)
+        {
+            await Task.Factory.StartNew(() =>
+           {
+               //TODO do some stuff here
+           });
+        }
         //public void SendData(string id, string data)
         //{
 
@@ -233,7 +247,14 @@ namespace Middleware
                 while (ws.State == WebSocketState.Open)
                 {
                     string data = await _readDatafromSocket(ws);
-                    _manager.DataRecevied(ws, data);
+                    try
+                    {
+                        _manager.DataRecevied(ws, data);
+                    }
+                    catch(Exception e)
+                    {
+                        Console.WriteLine("error handling received data: {0}", e.Message);
+                    }
                 }
                 Console.WriteLine("connection closed");
                 _manager.CloseConnection(ws);
@@ -242,6 +263,13 @@ namespace Middleware
             {
                 //normal HTTP requests like a web server
                 //var data = _readRequest(context);
+                //context.Response.StatusCode = 0;
+                //var result = "<!DOCTYPE html><html><h2>good day to you</h2></html>\n\n";
+                var result = "<!DOCTYPE html><html><h2>page not found</h2></html>\n\n";
+                context.Response.StatusCode = 404;
+                context.Response.StatusDescription = "page not found";
+                var encoded = Encoding.UTF8.GetBytes(result);
+                await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
             }
         }
 

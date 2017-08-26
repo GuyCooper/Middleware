@@ -171,6 +171,27 @@ namespace MiddlewareTests
         }
 
         [TestMethod]
+        public void When_requesting_with_a_listener_and_invalid_source()
+        {
+            var source1 = new TestEndpoint(null);
+            var testMessage1 = _createTestMessage("channel1", source1);
+            var testMessage2 = _createTestMessage("channel1", null, "test");
+            var OuT = new Channel();
+            var caught = false;
+            OuT.AddListener(testMessage1);
+            try
+            {
+                OuT.SendRequest(testMessage2);
+            }
+            catch(InvalidSourceException)
+            {
+                caught = true;
+            }
+            Assert.IsTrue(caught);
+            //Assert.AreEqual(source1.DataSent, "test");
+        }
+
+        [TestMethod]
         public void When_requesting_with_a_listener()
         {
             var source1 = new TestEndpoint(null);
@@ -209,7 +230,8 @@ namespace MiddlewareTests
             var message1 = _createTestMessage("channel1", source1);
             var message2 = _createTestMessage("channel1", source2, "test");
             message2.DestinationId = source1.Id;
-            OuT.AddSubscriber(message1);
+            OuT.AddListener(message2);
+            OuT.SendRequest(message1);
             OuT.SendMessage(message2);
             Assert.AreEqual(source1.DataSent, "test");
         }

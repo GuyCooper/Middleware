@@ -40,8 +40,8 @@ var MiddleWare = function () {
         };
 
         ws.onmessage = function (data) {
-            console.log("data received: " + data);
-            var message = JSON.parse(data);
+            console.log("data received: " + data.data);
+            var message = JSON.parse(data.data);
             if (message != null && message != undefined) {
                 switch (message.Type) {
                     case 0:
@@ -106,6 +106,6 @@ var MiddleWare = function () {
     }
 
     this.PublishMessage = function(channel, message) {
-        return processRequest(channel, "PUBLISHMESSAGE", 1, message);
+        return processRequest(channel, "PUBLISHMESSAGE", 0, message);
     }
 }

@@ -36,6 +36,14 @@ namespace Middleware
         }
     }
 
+    internal class InvalidSourceException : MiddlewareException
+    {
+        public InvalidSourceException(string name) :
+            base(name, "Invalid Source endpoint")
+        {
+        }
+    }
+
     interface IEndpoint
     {
         string Id { get; }
@@ -57,7 +65,9 @@ namespace Middleware
     class Channel :IChannel
     {
         private Dictionary<string, IEndpoint> _subscribers = new Dictionary<string, IEndpoint>();
+        private Dictionary<string, IEndpoint> _requesters = new Dictionary<string, IEndpoint>();
         private IEndpoint _PrimaryRequestHandler = null;
+       
 
         public string Name { get; set; }
 
@@ -96,7 +106,7 @@ namespace Middleware
         {
             //destination specified
             IEndpoint destination;
-            if (message.DestinationId != null &&_subscribers.TryGetValue(message.DestinationId, out destination) == true)
+            if (message.DestinationId != null && _requesters.TryGetValue(message.DestinationId, out destination) == true)
             {
                 destination.SendData(message);
             }
@@ -117,6 +127,18 @@ namespace Middleware
             if(_PrimaryRequestHandler != null)
             {
                 message.DestinationId = _PrimaryRequestHandler.Id;
+                if(message.Source == null)
+                {
+                    throw new InvalidSourceException(Name);
+                }
+
+                var lookup = message.SourceId ?? message.Source.Id;
+
+                if(_requesters.ContainsKey(lookup) == false)
+                {
+                    _requesters.Add(lookup, message.Source);
+                }
+
                 _PrimaryRequestHandler.SendData(message);
             }
             else
@@ -137,7 +159,8 @@ namespace Middleware
         public void RemoveEndpoint(string id)
         {
             _subscribers.Remove(id);
-            if(_PrimaryRequestHandler.Id == id)
+            _requesters.Remove(id);
+            if((_PrimaryRequestHandler != null)&&(_PrimaryRequestHandler.Id == id))
             {
                 _PrimaryRequestHandler = null;
             }

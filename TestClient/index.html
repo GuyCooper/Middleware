@@ -22,7 +22,7 @@
     <script type="text/javascript" src="scripts/MiddleWareClient.js"></script>
     <script type="text/javascript">
         var mw = new MiddleWare();
-
+        
         var onConnected = function() {
             document.getElementById('action').style.display = 'block';
         };
@@ -32,36 +32,32 @@
         };
 
         var onMessage = function (message) {
-
+            if (message.Command === "SENDREQUEST") {
+                document.getElementById("received").value = message.Payload;
+                document.getElementById("source").value = message.SourceId;
+            }
+            else if (message.Command === "SENDMESSAGE") {
+                document.getElementById("received").value = message.Payload;
+            }
+            else if (message.Command === "PUBLISHMESSAGE") {
+                document.getElementById("broadcast-received").value = message.Payload;
+            }
         };
 
         connectToServer = function () {
             mw.Connect("ws://localhost:8080", onConnected, onError, onMessage);
         };
 
-
-        //sendData = function () {
-        //    var data = document.getElementById("testInput").value;
-        //    ws.send(data);
-        //}
-
-
-        //doArray = function () {
-        //    var serialised = "USERNAME\r\nPASSWORD\r\nLOGIN";
-
-        //    var count = 0;
-        //    var res = {};
-        //    var arr = serialised.split('\n');
-        //    arr.forEach(function (arg) {
-        //        res[arg.trim()] = count++;
-        //    });
-
-        //    var match = res["PASSWORD"];
-        //}
-
         addSubscriber = function () {
-            document.getElementById("sendrequestbutton").disabled = "";
-        }
+            var channel = document.getElementById("channel").value;
+            mw.SubscribeChannel(channel).then(() => {
+                alert("add subscriber succedded :-)")
+            },
+            (error) => {
+                alert("add subscribeer failed :-)")
+            });
+        };
+
         addListener = function () {
             var channel = document.getElementById("channel").value;
             mw.AddListener(channel).then(() => {
@@ -70,7 +66,41 @@
             (error) => {
                 alert("add listener failed :-)")
             });
-        }
+        };
+
+        broadcastMessage = function () {
+            var channel = document.getElementById("channel").value;
+            var message = document.getElementById("broadcast").value;
+            mw.PublishMessage(channel, message).then(() => {
+                alert("publish message succedded :-)")
+            },
+            (error) => {
+                alert("publish message failed. " + error + " :-)")
+            });
+        };
+
+        sendRequest = function () {
+            var channel = document.getElementById("channel").value;
+            var message = document.getElementById("sendrequest").value;
+            mw.SendRequest(channel, message).then(() => {
+                alert("send request succeded :-)")
+            },
+            (error) => {
+                alert("send request failed. " + error + " :-(")
+            });
+        };
+
+        sendResponse = function () {
+            var channel = document.getElementById("channel").value;
+            var source = document.getElementById("source").value;
+            var response = document.getElementById("sendresponse").value;
+            mw.SendMessage(channel, response, source).then(() => {
+                alert("send response succedded :-)")
+            },
+            (error) => {
+                alert("send response failed. " + error + " :-)")
+            });
+        };
     </script>
 </head>
 <body>
@@ -94,20 +124,38 @@
                 <label>Send Request</label>
                 <div class="row">
                     <input type="text" id="sendrequest" />
-                    <input type="button" value="Send Request" onclick="sendRequest" id="sendrequestbutton" disabled="disabled" />
+                    <input type="button" value="Send Request" onclick="sendRequest()" id="sendrequestbutton"/>
                 </div>
             </div>
             <div class="send-box">
                 <div class="row">
                     <label>Recieved</label>
-                    <input type="text" id="recieved" readonly="readonly" />
+                    <input type="text" id="received" readonly="readonly" />
+                </div>
+                <div class="row">
+                    <label>Source</label>
+                    <input type="text" id="source" />
                 </div>
                 <div class="row">
                     <label>Send Response</label>
                     <input type="text" id="sendresponse" />
-                    <input type="button" value="Send Response" onclick="sendResponse" id="sendresponsebutton" disabled="disabled" />
+                    <!--<input type="button" value="Send Response" onclick="sendResponse" id="sendresponsebutton" disabled="disabled" />-->
+                    <input type="button" value="Send Response" onclick="sendResponse()" id="sendresponsebutton" />
                 </div>
             </div>
+            <div class="send-box">
+                <label>Broadcast Message</label>
+                <div class="row">
+                    <input type="text" id="broadcast" />
+                    <input type="button" value="Broadcast" onclick="broadcastMessage()" id="broadcastbutton" />
+                </div>
+                <div class="row">
+                    <label>Message Recieved</label>
+                    <input type="text" id="broadcast-received" readonly="readonly" />
+                </div>
+
+            </div>
+
         </div> 
     </div>
     

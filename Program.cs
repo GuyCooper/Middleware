@@ -49,6 +49,7 @@ namespace Middleware
             var url = "http://localhost:8080/";
             int maxConnections = 3; //max number of concurrent connections
             Console.WriteLine("initialising server on port: {0}", url);
+            Console.WriteLine("with {0} max concurrent connections", maxConnections);
 
             IChannel channel = new Channels();
             IHandler publishHandler = new PublishMessageHandler(channel);
