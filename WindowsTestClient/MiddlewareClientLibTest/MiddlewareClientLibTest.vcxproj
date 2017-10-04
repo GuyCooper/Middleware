@@ -155,6 +155,7 @@
     <ClInclude Include="test_redirector.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AssortedTests.cpp" />
     <ClCompile Include="MiddlewareClientLibTest.cpp" />
     <ClCompile Include="MiddlewareTests.cpp" />
     <ClCompile Include="stdafx.cpp" />

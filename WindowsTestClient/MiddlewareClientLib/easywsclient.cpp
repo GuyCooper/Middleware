@@ -438,16 +438,17 @@ easywsclient::WebSocket::pointer from_url(const std::string& url, bool useMask, 
       fprintf(stderr, "ERROR: origin size limit exceeded: %s\n", origin.c_str());
       return NULL;
     }
-    if (false) { }
-    else if (sscanf_s(url.c_str(), "ws://%[^:/]:%d/%s", host, &port, path) == 3) {
-    }
-    else if (sscanf_s(url.c_str(), "ws://%[^:/]/%s", host, path) == 2) {
+    //if (false) { }
+	if (sscanf_s(url.c_str(), "ws://%[^:/]:%d", host, (unsigned)_countof(host), &port, sizeof(int)) == 2) {
+		path[0] = '\0';
+	}
+    else if (sscanf_s(url.c_str(), "ws://%[^:/]/%s", host, (unsigned)_countof(host), path, (unsigned)_countof(path)) == 2) {
         port = 80;
     }
-    else if (sscanf_s(url.c_str(), "ws://%[^:/]:%d", host, &port) == 2) {
-        path[0] = '\0';
-    }
-    else if (sscanf_s(url.c_str(), "ws://%[^:/]", host) == 1) {
+	else if (sscanf_s(url.c_str(), "ws://%[^:/]:%d/%s", host, (unsigned)_countof(host), &port, sizeof(int), path, (unsigned)_countof(path)) == 3) {
+	}
+
+    else if (sscanf_s(url.c_str(), "ws://%[^:/]", host, (unsigned)_countof(host)) == 1) {
         port = 80;
         path[0] = '\0';
     }

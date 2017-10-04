@@ -49,6 +49,10 @@ Temporary Items
 *.pdb
 *.suo
 
+#vs shitty files
+*.ipch
+*.db
+
 obj
 bin
 debug

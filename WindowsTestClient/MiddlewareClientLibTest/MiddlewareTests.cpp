@@ -16,7 +16,7 @@ namespace
 			data_ = data;
 		}
 
-		virtual void RegisterCallbackHandler(MiddlewareLib::CALLBACK_FUNC handler)
+		virtual void StartDispatcher(MiddlewareLib::CALLBACK_FUNC handler)
 		{
 			_handler = handler;
 		}
@@ -29,12 +29,12 @@ namespace
 
 	std::string TestChannel = "TestChannel";
 	std::string TestPayload = "tes payload data";
-	std::string TestSendRequestMessage = "{\"Type\": \"0\", \"RequestId\": \"123\", \"Command\": \"SENDREQUEST\", \"Channel\": \"TestChannel\", \"DestinationId\": \"xyz\", \"Payload\": \"hello\"}";
-	std::string TestPublishUpdateMessage = "{\"Type\": \"1\", \"RequestId\": \"123\", \"Command\": \"PUBLISHMESSAGE\", \"Channel\": \"TestChannel\", \"DestinationId\": \"xyz\", \"Payload\": \"goodbye\"}";
+	std::string TestSendRequestMessage = "{\"Type\": \"0\", \"RequestId\": \"123\", \"Command\": \"SENDREQUEST\", \"Channel\": \"TestChannel\", \"DestinationId\": \"xyz\", \"SourceId\": \"1234\", \"Payload\": \"hello\"}";
+	std::string TestPublishUpdateMessage = "{\"Type\": \"1\", \"RequestId\": \"123\", \"Command\": \"PUBLISHMESSAGE\", \"Channel\": \"TestChannel\", \"DestinationId\": \"xyz\", \"SourceId\": \"1234\", \"Payload\": \"goodbye\"}";
 	std::string receivedPayload;
 	std::string receivedCommand;
 
-	static void handler_callback(const MiddlewareLib::Message& message)
+	static void handler_callback(MiddlewareLib::ISession* session, const MiddlewareLib::Message& message)
 	{
 		receivedCommand = message.command_;
 		receivedPayload = message.payload_;
@@ -43,7 +43,8 @@ namespace
 	TestSessionPtr_t CreateTestSession()
 	{
 		TestSessionPtr_t session(new TestSession());
-		MiddlewareLib::RegisterMessageCallbackFunction(session.get(), handler_callback);
+		MiddlewareLib::RegisterMessageCallbackFunction(handler_callback);
+		MiddlewareLib::StartDispatching(session.get());
 		BOOST_CHECK(session->_handler != NULL);
 		return session;
 	}
@@ -83,14 +84,14 @@ BOOST_AUTO_TEST_CASE(when_subscribing_to_a_channel_with_success)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { BOOST_CHECK(true); },
-		[](const std::string& data) -> void { BOOST_CHECK(false); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(true); },
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); } };
 
 	bool success = MiddlewareLib::SubscribeToChannel(session.get(), params);
 	BOOST_CHECK(success);
 
 	boost::replace_first(session->data_, "\"0\"", "\"3\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_subscribing_to_a_channel_with_failure)
@@ -99,15 +100,15 @@ BOOST_AUTO_TEST_CASE(when_subscribing_to_a_channel_with_failure)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { BOOST_CHECK(false); },
-		[](const std::string& data) -> void { BOOST_CHECK(true); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); },
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(true); } };
 
 	bool success = MiddlewareLib::SubscribeToChannel(session.get(), params);
 	BOOST_CHECK(success);
 
 	boost::replace_first(session->data_, "\"0\"", "\"2\"");
 	//std::string newMsg = replaceMessageChars(session->data_, "\"0\"", "\"2\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_Adding_listener_to_a_channel_with_success)
@@ -116,15 +117,15 @@ BOOST_AUTO_TEST_CASE(when_Adding_listener_to_a_channel_with_success)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { BOOST_CHECK(true); },
-		[](const std::string& data) -> void { BOOST_CHECK(false); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(true); },
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); } };
 
 	bool success = MiddlewareLib::AddChannelListener(session.get(), params);
 	BOOST_CHECK(success);
 
 	//std::string newMsg = replaceMessageChars(session->data_, "\"0\"", "\"3\"");
 	boost::replace_first(session->data_, "\"0\"", "\"3\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_Adding_listener_to_a_channel_with_failure)
@@ -133,15 +134,15 @@ BOOST_AUTO_TEST_CASE(when_Adding_listener_to_a_channel_with_failure)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { BOOST_CHECK(false); },
-		[](const std::string& data) -> void { BOOST_CHECK(true); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); },
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(true); } };
 
 	bool success = MiddlewareLib::AddChannelListener(session.get(), params);
 	BOOST_CHECK(success);
 
 	//std::string newMsg = replaceMessageChars(session->data_, "\"0\"", "\"2\"");
 	boost::replace_first(session->data_, "\"0\"", "\"2\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_sending_message_to_a_channel_with_success)
@@ -150,17 +151,17 @@ BOOST_AUTO_TEST_CASE(when_sending_message_to_a_channel_with_success)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { 
+		[](MiddlewareLib::ISession*, const std::string& data) -> void {
 										BOOST_CHECK(true);
 										BOOST_CHECK(data == TestPayload); },
-		[](const std::string& data) -> void { BOOST_CHECK(false); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); } };
 
-	bool success = MiddlewareLib::SendMessageToChannel(session.get(), params, TestPayload);
+	bool success = MiddlewareLib::SendMessageToChannel(session.get(), params, TestPayload, "1234");
 	BOOST_CHECK(success);
 
 	boost::replace_first(session->data_, "\"0\"", "\"3\""); 
 	//std::string newMsg = replaceMessageChars(session->data_, "\"0\"", "\"3\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_sending_message_to_a_channel_with_failure)
@@ -169,21 +170,21 @@ BOOST_AUTO_TEST_CASE(when_sending_message_to_a_channel_with_failure)
 	bool result = false;
 
 	MiddlewareLib::MiddlewareRequestParams params{ TestChannel ,
-		[](const std::string& data) -> void { BOOST_CHECK(false); },
-		[](const std::string& data) -> void { BOOST_CHECK(true); } };
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(false); },
+		[](MiddlewareLib::ISession*, const std::string& data) -> void { BOOST_CHECK(true); } };
 
-	bool success = MiddlewareLib::SendMessageToChannel(session.get(), params, TestPayload);
+	bool success = MiddlewareLib::SendMessageToChannel(session.get(), params, TestPayload, "1234");
 	BOOST_CHECK(success);
 
 	boost::replace_first(session->data_, "\"0\"", "\"2\"");
 	//std::string newMsg = replaceMessageChars(session->data_, "\"0\"", "\"2\"");
-	session->_handler(session->data_);
+	session->_handler(session.get(), session->data_);
 }
 
 BOOST_AUTO_TEST_CASE(when_receiving_a_send_request_message)
 {
 	TestSessionPtr_t session = CreateTestSession();
-	session->_handler(TestSendRequestMessage);
+	session->_handler(session.get(), TestSendRequestMessage);
 	BOOST_CHECK(receivedCommand == "SENDREQUEST");
 	BOOST_CHECK(receivedPayload == "hello");
 }
@@ -191,7 +192,7 @@ BOOST_AUTO_TEST_CASE(when_receiving_a_send_request_message)
 BOOST_AUTO_TEST_CASE(when_receiving_a_publish_update_message)
 {
 	TestSessionPtr_t session = CreateTestSession();
-	session->_handler(TestPublishUpdateMessage);
+	session->_handler(session.get(), TestPublishUpdateMessage);
 	BOOST_CHECK(receivedCommand == "PUBLISHMESSAGE");
 	BOOST_CHECK(receivedPayload == "goodbye");
 }

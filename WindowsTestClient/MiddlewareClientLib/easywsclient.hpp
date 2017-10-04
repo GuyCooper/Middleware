@@ -37,28 +37,30 @@ class WebSocket {
     virtual readyStateValues getReadyState() const = 0;
 
     template<class Callable>
-    void dispatch(Callable callable)
+    void dispatch(Callable callable, void* context)
         // For callbacks that accept a string argument.
     { // N.B. this is compatible with both C++11 lambdas, functors and C function pointers
         struct _Callback : public Callback_Imp {
             Callable& callable;
-            _Callback(Callable& callable) : callable(callable) { }
-            void operator()(const std::string& message) { callable(message); }
+			void* _context;
+            _Callback(Callable& callable, void* context) : callable(callable), _context(context) { }
+            void operator()(const std::string& message) { callable(message, _context); }
         };
-        _Callback callback(callable);
+        _Callback callback(callable, context);
         _dispatch(callback);
     }
 
     template<class Callable>
-    void dispatchBinary(Callable callable)
+    void dispatchBinary(Callable callable, void* context)
         // For callbacks that accept a std::vector<uint8_t> argument.
     { // N.B. this is compatible with both C++11 lambdas, functors and C function pointers
         struct _Callback : public BytesCallback_Imp {
             Callable& callable;
-            _Callback(Callable& callable) : callable(callable) { }
-            void operator()(const std::vector<uint8_t>& message) { callable(message); }
+            _Callback(Callable& callable, void* context) : callable(callable), _context(context) { }
+            void operator()(const std::vector<uint8_t>& message) { callable(message, _context); }
         };
-        _Callback callback(callable);
+        _Callback callback(callable, context);
+		void* _context;
         _dispatchBinary(callback);
     }
 

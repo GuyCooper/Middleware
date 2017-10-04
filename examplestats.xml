@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-16"?><?xml-stylesheet type="text/xsl" href="index.xslt"?>
+<stats xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<channels>
+	<channel>
+		<name>test4</name>
+		<requests>2</requests>
+		<data>64</data>
+	</channel>
+</channels>
+<licensed-to>dev</licensed-to>
+<max-connections>10</max-connections>
+<current-connections>2</current-connections>
+<connections>
+	<connection>
+		<id>d9811f62-e737-4e79-a2b3-e39219b681ec</id>
+		<remote-address>http://localhost:8085</remote-address>
+		<requests>1</requests>
+		<data>38</data>
+	</connection>
+	<connection>
+		<id>6bbafd6e-1141-4b58-bbc4-9c65a6baa412</id>
+		<remote-address>http://localhost:8085</remote-address>
+		<requests>1</requests>
+		<data>26</data>
+	</connection>
+</connections>
+</stats>

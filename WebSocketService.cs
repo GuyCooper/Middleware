@@ -77,43 +77,40 @@ namespace Middleware
 
         public void OnError(Message message, string error)
         {
-            //do not send responses back to client for broadcast message types
-            //i.e. if message type is an update
-            if (message.Type == MessageType.UPDATE)
+            //do not send responses back to client for update message types
+            //(data publish or responses)
+            if (message.Type == MessageType.REQUEST)
             {
-                return;
+
+                //Send error response to client
+                var response = new Message
+                {
+                    Type = MessageType.RESPONSE_ERROR,
+                    RequestId = message.RequestId,
+                    Payload = error
+                };
+
+                var payload = JsonConvert.SerializeObject(response);
+                _SendDataToClient(payload);
             }
-
-            //Send error response to client
-            var response = new Message
-            {
-                Type = MessageType.RESPONSE_ERROR,
-                RequestId = message.RequestId,
-                Payload = error
-            };
-
-            var payload = JsonConvert.SerializeObject(response);
-            _SendDataToClient(payload);
         }
 
         public void OnSucess(Message message)
         {
-            //do not send responses back to client for broadcast message types
-            //i.e. if message type is an update
-            if(message.Type == MessageType.UPDATE)
+            //do not send responses back to client for update message types
+            //(data publish or responses)
+            if (message.Type == MessageType.REQUEST)
             {
-                return;
+                //send a success response back to the client
+                var response = new Message
+                {
+                    Type = MessageType.RESPONSE_SUCCESS,
+                    RequestId = message.RequestId
+                };
+                var payload = JsonConvert.SerializeObject(response);
+
+                _SendDataToClient(payload);
             }
-
-            //send a success response back to the client
-            var response = new Message
-            {
-                Type = MessageType.RESPONSE_SUCCESS,
-                RequestId = message.RequestId
-            };
-            var payload = JsonConvert.SerializeObject(response);
-
-            _SendDataToClient(payload);
         }
 
         public void EndpointClosed()
@@ -132,16 +129,19 @@ namespace Middleware
         //private Dictionary<string, Endpoint> _endpointLookup = new Dictionary<string, Endpoint>();
         private List<WsEndpoint> _endpoints = new List<WsEndpoint>();
         private IHandler _handler;
+        private IMessageStats _stats;
 
-        public EndpointManager(IHandler handler)
+        public EndpointManager(IHandler handler, IMessageStats stats)
         {
             _handler = handler;
+            _stats = stats;
         }
 
-        public void NewConnection(WebSocket socket)
+        public void NewConnection(WebSocket socket, string origin)
         {
             var endpoint = new WsEndpoint(socket, _handler);
             _endpoints.Add(endpoint);
+            _stats.OpenConnection(endpoint.Id, origin);
             //_endpointLookup.Add(id, endpoint);
         }
 
@@ -153,7 +153,7 @@ namespace Middleware
                 endpoint.EndpointClosed();
             }
             _endpoints.Remove(endpoint);
-
+            _stats.CloseConnection(endpoint.Id);
         }
 
         public void DataRecevied(WebSocket socket, string data)
@@ -165,13 +165,11 @@ namespace Middleware
             }
         }
 
-        public async void HandleHttpRequest(HttpListenerResponse request, HttpListenerResponse response)
+        public IMessageStats GetStats()
         {
-            await Task.Factory.StartNew(() =>
-           {
-               //TODO do some stuff here
-           });
+            return _stats;
         }
+
         //public void SendData(string id, string data)
         //{
 
@@ -182,10 +180,13 @@ namespace Middleware
         private HttpListener _httpListener;
         private EndpointManager _manager;
 
-        public WSServer(EndpointManager manager)
+        private string _root;
+
+        public WSServer(EndpointManager manager, string root)
         {
             _httpListener = new HttpListener();
             _manager = manager;
+            _root = root;
         }
 
         //read the data from the web socket request
@@ -243,7 +244,8 @@ namespace Middleware
                 Console.WriteLine("connection received");
                 HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
                 WebSocket ws = webSocketContext.WebSocket;
-                _manager.NewConnection(ws);
+                var origin = webSocketContext.Origin;
+                _manager.NewConnection(ws, origin);
                 while (ws.State == WebSocketState.Open)
                 {
                     string data = await _readDatafromSocket(ws);
@@ -261,15 +263,28 @@ namespace Middleware
             }
             else
             {
-                //normal HTTP requests like a web server
-                //var data = _readRequest(context);
-                //context.Response.StatusCode = 0;
-                //var result = "<!DOCTYPE html><html><h2>good day to you</h2></html>\n\n";
-                var result = "<!DOCTYPE html><html><h2>page not found</h2></html>\n\n";
-                context.Response.StatusCode = 404;
-                context.Response.StatusDescription = "page not found";
-                var encoded = Encoding.UTF8.GetBytes(result);
-                await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
+                //standard http request. if url spcified then open file from fs
+                //othwerwise return full stats page
+                string result = null;
+                if (context.Request.RawUrl != "/")
+                {
+                    var filename = Path.Combine(_root, context.Request.RawUrl.Trim('/'));
+                    using (var indexFile = new StreamReader(filename))
+                    {
+                        result = indexFile.ReadToEnd();
+                    }
+                }
+                else
+                {
+                    result = _manager.GetStats().ToXML();
+                }
+                if (result != null)
+                {
+                    result += "\n";
+                    var encoded = Encoding.UTF8.GetBytes(result);
+                    //await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
+                    context.Response.Close(encoded, false);
+                }
             }
         }
 

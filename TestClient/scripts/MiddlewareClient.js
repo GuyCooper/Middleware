@@ -78,11 +78,15 @@ var MiddleWare = function () {
                 DestinationId: destination
             };
 
-            callQueue.push( {
-                id : id,
-                succeed : resolve,
-                failed: reject
-            });
+            //add al request type messages to call queue. this means that we expect a response
+            //for thenm from the server
+            if (type === 0) {
+                callQueue.push({
+                    id: id,
+                    succeed: resolve,
+                    failed: reject
+                });
+            }
 
             ws.send(JSON.stringify(payload));
         });
@@ -90,11 +94,11 @@ var MiddleWare = function () {
     };
 
     this.SubscribeChannel = function (channel) {
-        return processRequest(channel, "SUBSCRIBETOCHANNEL", 0, null, null);
+        return processRequest(channel, "SUBSCRIBETOCHANNEL", 1, null, null);
     };
 
     this.SendMessage  = function(channel, message, destination) {
-        return processRequest(channel, "SENDMESSAGE", 0, message, destination);
+        return processRequest(channel, "SENDMESSAGE", 1, message, destination);
     }
 
     this.AddListener = function (channel) {
@@ -106,6 +110,6 @@ var MiddleWare = function () {
     }
 
     this.PublishMessage = function(channel, message) {
-        return processRequest(channel, "PUBLISHMESSAGE", 0, message);
+        return processRequest(channel, "PUBLISHMESSAGE", 1, message);
     }
 }

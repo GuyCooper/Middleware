@@ -173,11 +173,12 @@ namespace Middleware
 
         private LimitedConcurrencyLevelTaskScheduler _scheduler;
         private TaskFactory _taskFactory;
+        private IMessageStats _stats;
 
-        public Channels()
+        public Channels(IMessageStats stats)
         {
             //all methods in this class need to be executed on a single thread
-
+            _stats = stats;
             _scheduler = new LimitedConcurrencyLevelTaskScheduler(1);
             _taskFactory = new TaskFactory(_scheduler);
         }
@@ -206,6 +207,10 @@ namespace Middleware
             {
                 var channel = _getchannel(message.Channel);
                 command(channel);
+                if (_stats != null)
+                {
+                    _stats.UpdateChannelStats(message);
+                }
             }
             catch(Exception e)
             {
