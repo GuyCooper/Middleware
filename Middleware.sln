@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Middleware", "Middleware.cs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiddlewareTests", "MiddlewareTests\MiddlewareTests.csproj", "{F80EA499-140E-40CA-BADC-0CB4C886587D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiddlewareInterfaces", "MiddlewareInterfaces\MiddlewareInterfaces.csproj", "{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

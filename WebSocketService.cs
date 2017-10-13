@@ -65,10 +65,10 @@ namespace Middleware
         {
             //first ensure that this message is for this endpoint unless it is
             //a broadcast message
-            if (message.DestinationId != null && message.DestinationId != Id )
-            {
-                throw new MisroutingException(Id);
-            }
+            //if (message.DestinationId != null && message.DestinationId != Id )
+            //{
+            //    throw new MisroutingException(Id);
+            //}
 
             //ensure that the Source endpoint member is NT serialised
             var payload = JsonConvert.SerializeObject(message);
@@ -244,7 +244,8 @@ namespace Middleware
                 Console.WriteLine("connection received");
                 HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
                 WebSocket ws = webSocketContext.WebSocket;
-                var origin = webSocketContext.Origin;
+                var vals = webSocketContext.Headers.GetValues(MessageHeaders.CLIENTLOCATION);
+                var origin = vals.Length > 0 ? vals[0] :  webSocketContext.Origin;
                 _manager.NewConnection(ws, origin);
                 while (ws.State == WebSocketState.Open)
                 {

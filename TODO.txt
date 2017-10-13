@@ -1,2 +1,4 @@
 ﻿processcompletion callback in channels needs to send success or fail response
 back to client along with any error messages - DONE
+
+Authentication handling

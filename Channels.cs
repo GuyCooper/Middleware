@@ -44,14 +44,6 @@ namespace Middleware
         }
     }
 
-    interface IEndpoint
-    {
-        string Id { get; }
-        void SendData(Message message);
-        void OnError(Message message, string error);
-        void OnSucess(Message message);
-    }
-
     interface IChannel
     {
         void AddSubscriber(Message message); //add a subscriber to a channel to receive any broadcasts

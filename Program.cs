@@ -8,39 +8,6 @@ using Newtonsoft.Json;
 
 namespace Middleware
 {
-    enum MessageType
-    {
-        REQUEST = 0,
-        UPDATE = 1,
-        RESPONSE_ERROR = 2,
-        RESPONSE_SUCCESS = 3
-    }
-
-    class Location
-    {
-        string Name { get; set; }
-    }
-
-    interface Payload
-    {
-        string SerialisePayload();
-    }
-
-    //[JsonObject(MemberSerialization.OptIn)]
-    class Message
-    {
-        public MessageType Type { get; set; }
-        public string RequestId { get; set; }
-        public string Command { get; set; }
-        public string Channel { get; set; }
-        [JsonIgnore]
-        public IEndpoint Source { get; set; } //internal use only
-        public string SourceId { get; set; }
-        public string DestinationId { get; set; }
-        public string Payload { get; set; }
-    }
-
-
     class Program
     {
         static AutoResetEvent _shutdownEvent = new AutoResetEvent(false);

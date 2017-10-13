@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE(test_remove_if)
 	while ((i = std::find_if(i, lookup.end(), RemoveHello)) != lookup.end())
 		lookup.erase(i++);
 
-	BOOST_CHECK(1, lookup.size());
+	BOOST_CHECK(1 == lookup.size());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

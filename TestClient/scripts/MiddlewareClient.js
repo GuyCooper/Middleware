@@ -94,7 +94,7 @@ var MiddleWare = function () {
     };
 
     this.SubscribeChannel = function (channel) {
-        return processRequest(channel, "SUBSCRIBETOCHANNEL", 1, null, null);
+        return processRequest(channel, "SUBSCRIBETOCHANNEL", 0, null, null);
     };
 
     this.SendMessage  = function(channel, message, destination) {

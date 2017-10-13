@@ -14,16 +14,6 @@ namespace Middleware
         IHandler GetNext();
     }
 
-    internal static class HandlerNames
-    {
-        public static readonly string SUBSCRIBETOCHANNEL = "SUBSCRIBETOCHANNEL";
-        public static readonly string REMOVESUBSCRIPTION = "REMOVESUBSCRIPTION";
-        public static readonly string SENDMESSAGE = "SENDMESSAGE";
-        public static readonly string ADDLISTENER = "ADDLISTENER";
-        public static readonly string SENDREQUEST = "SENDREQUEST";
-        public static readonly string PUBLISHMESSAGE = "PUBLISHMESSAGE";
-    }
-
     abstract class CommandHandler : IHandler
     {
         private IHandler _Next = null;
