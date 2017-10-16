@@ -245,7 +245,7 @@ namespace Middleware
                 HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
                 WebSocket ws = webSocketContext.WebSocket;
                 var vals = webSocketContext.Headers.GetValues(MessageHeaders.CLIENTLOCATION);
-                var origin = vals.Length > 0 ? vals[0] :  webSocketContext.Origin;
+                var origin = (vals != null) && (vals.Length > 0) ? vals[0] :  webSocketContext.Origin;
                 _manager.NewConnection(ws, origin);
                 while (ws.State == WebSocketState.Open)
                 {

@@ -31,7 +31,7 @@ namespace MiddlewareNetClient
             if (_ws == null)
             {
                 _ws = new ClientWebSocket();
-                _ws.Options.SetRequestHeader("clientLocation", "here");
+                _ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTLOCATION, System.Environment.MachineName);
 
                 await _ws.ConnectAsync(_uri, System.Threading.CancellationToken.None).ContinueWith(async (t) =>
                 {
