@@ -15,28 +15,31 @@ namespace Middleware
         {
             if(args.Length == 0)
             {
-                Console.WriteLine(@"syntax: Middleware <port (http://localhost:8080/)> <max connections (10)> <root (//_root = (C:\Projects\Middleware\Middleware)>");
+                Console.WriteLine(@"syntax: Middleware <port (8080)> <max connections (10)> <root (//_root = (C:\Projects\Middleware\Middleware)>");
             }
 
-            var url = args.Length > 0 ? args[0] :  "http://localhost:8080/";
+            //var url = string.Format("https://localhost:{0}/", args.Length > 0 ? args[0] :  "8080");
+            //string[] urls = { "http://*:8080", "https://*:8443"};
+            string[] urls = { "http://localhost:8080/" };
             int maxConnections = args.Length > 1 ? int.Parse(args[1]) : 10; //max number of concurrent connections
             string root =  @"C:\Projects\Middleware\Middleware";
-            Console.WriteLine("initialising server on port: {0}", url);
+            Console.WriteLine("initialising server on port: {0}", urls);
             Console.WriteLine("with {0} max concurrent connections", maxConnections);
 
             IMessageStats stats = new MessageStats("dev", maxConnections);
             IChannel channel = new Channels(stats);
             IHandler publishHandler = new PublishMessageHandler(channel);
+            IAuthenitcationHandler authHandler = new DefaultAuthenticationHandler();
             publishHandler.AddHandler(new SendMessageHandler(channel));
             publishHandler.AddHandler(new SendRequestHandler(channel));
             publishHandler.AddHandler(new AddListenerHandler(channel));
             publishHandler.AddHandler(new SubscribeToChannelHandler(channel));
             publishHandler.AddHandler(new RemoveSubscriptionHandler(channel));
 
-            EndpointManager manager = new EndpointManager(publishHandler, stats);
+            EndpointManager manager = new EndpointManager(publishHandler, authHandler, stats);
 
-            WSServer server = new WSServer(manager, root);
-            server.Start(url, maxConnections);
+            WSServer server = new Endpointserver(manager, root, stats);
+            server.Start(urls, maxConnections);
 
             Console.WriteLine("server initialised");
 

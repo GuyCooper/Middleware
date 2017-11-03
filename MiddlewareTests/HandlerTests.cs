@@ -8,39 +8,39 @@ namespace MiddlewareTests
 {
     class TestChannel : IChannel
     {
-        public Message ListenerMessageResult { get; private set; }
-        public Message SubscriberMessageResult { get; private set; }
-        public Message PublishMessageResult { get; private set; }
-        public Message RemoveSubscriberResult { get; private set; }
-        public Message SendMessageResult { get; private set; }
-        public Message SendRequestResult { get; private set; }
+        public MiddlewareMessage ListenerMessageResult { get; private set; }
+        public MiddlewareMessage SubscriberMessageResult { get; private set; }
+        public MiddlewareMessage PublishMessageResult { get; private set; }
+        public MiddlewareMessage RemoveSubscriberResult { get; private set; }
+        public MiddlewareMessage SendMessageResult { get; private set; }
+        public MiddlewareMessage SendRequestResult { get; private set; }
 
-        public void AddListener(Message message)
+        public void AddListener(MiddlewareMessage message)
         {
             ListenerMessageResult = message;
         }
 
-        public void AddSubscriber(Message message)
+        public void AddSubscriber(MiddlewareMessage message)
         {
             SubscriberMessageResult = message;
         }
 
-        public void PublishMessage(Message message)
+        public void PublishMessage(MiddlewareMessage message)
         {
             PublishMessageResult = message;
         }
 
-        public void RemoveSubscriber(Message message)
+        public void RemoveSubscriber(MiddlewareMessage message)
         {
             RemoveSubscriberResult = message;
         }
 
-        public void SendMessage(Message message)
+        public void SendMessage(MiddlewareMessage message)
         {
             SendMessageResult = message;
         }
 
-        public void SendRequest(Message message)
+        public void SendRequest(MiddlewareMessage message)
         {
             SendRequestResult = message;
         }
@@ -69,14 +69,17 @@ namespace MiddlewareTests
             _testhandler.AddHandler(new PublishMessageHandler(_testChannel));
         }
 
-        private Message _CreateTestMessage(string command)
+        private MiddlewareMessage _CreateTestMessage(string command)
         {
-            return new Message
-            {
-                Channel = "TEST",
-                Command = command,
-                Payload = "some data"
-            };
+            return new MiddlewareMessage(
+                new Message
+                {
+                    Channel = "TEST",
+                    Command = command,
+                    Payload = "some data"
+                },
+                null
+            );
         }
         [TestMethod]
         public void When_adding_a_listener()

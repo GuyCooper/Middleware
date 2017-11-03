@@ -8,7 +8,7 @@ namespace Middleware
 {
     interface IHandler
     {
-        bool ProcessMessage(Message message);
+        bool ProcessMessage(MiddlewareMessage message);
         void AddHandler(IHandler handler);
         void RemoveEndpoint(string id);
         IHandler GetNext();
@@ -25,16 +25,22 @@ namespace Middleware
             _channel = channel;
         }
 
-        protected abstract void HandleMessageInternal(Message message);
+        protected abstract void HandleMessageInternal(MiddlewareMessage message);
 
-        public bool ProcessMessage(Message message)
+        public bool ProcessMessage(MiddlewareMessage message)
         {
-            if(message == null || message.Command == null)
+            if(message == null || message.Payload == null)
             {
                 return false;
             }
 
-            if (message.Command == _Name)
+            var payload = message.Payload;
+            if(payload.Command == null)
+            {
+                return false;
+            }
+
+            if (payload.Command == _Name)
             {
                 //this is the handler for this command
                 //do stuff here
@@ -89,7 +95,7 @@ namespace Middleware
             _Name = HandlerNames.SUBSCRIBETOCHANNEL;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.AddSubscriber(message);
@@ -107,7 +113,7 @@ namespace Middleware
             _Name = HandlerNames.REMOVESUBSCRIPTION;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.RemoveSubscriber(message);
@@ -125,7 +131,7 @@ namespace Middleware
             _Name = HandlerNames.SENDMESSAGE;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.SendMessage(message);
@@ -143,7 +149,7 @@ namespace Middleware
             _Name = HandlerNames.ADDLISTENER;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.AddListener(message);
@@ -162,7 +168,7 @@ namespace Middleware
             _Name = HandlerNames.SENDREQUEST;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.SendRequest(message);
@@ -177,7 +183,7 @@ namespace Middleware
             _Name = HandlerNames.PUBLISHMESSAGE;
         }
 
-        protected override void HandleMessageInternal(Message message)
+        protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             //subscribe this user to this channel
             _channel.PublishMessage(message);

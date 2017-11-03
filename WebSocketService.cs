@@ -7,7 +7,6 @@ using System.Net;
 using System.Net.WebSockets;
 using System.IO;
 using System.Threading;
-using Newtonsoft.Json;
 
 namespace Middleware
 {
@@ -17,176 +16,127 @@ namespace Middleware
         {
         }
     }
-    class WsEndpoint : IEndpoint
+
+    class WebsocketConnection : IConnection
     {
-        private WebSocket _socket; //underlying socket transport
-        private IHandler _handler;
-
-        public string Id { get; private set; }
-
-        public WsEndpoint(WebSocket socket, IHandler handler)
+        private WebSocket _socket;
+        public WebsocketConnection(WebSocket socket)
         {
-            Id = Guid.NewGuid().ToString();
             _socket = socket;
-            _handler = handler;
         }
 
-        public void DataReceived(string data)
+        public async Task SendData(string data)
         {
-            if(string.IsNullOrEmpty(data))
-            {
-                return;
-            }
-
-            Console.WriteLine("data received on endpoint {0}, {1}", Id, data);
-
-            Message message = JsonConvert.DeserializeObject<Message>(data);
-            //populate the session id
-            message.Source = this;
-            message.SourceId = Id;
-
-            //now forward message onto handlers
-            if(_handler.ProcessMessage(message) == false)
-            {
-                string error = "invalid command. " + message.Command; ;
-                Console.WriteLine(error);
-                OnError(message, error);
-            }
-        }
-
-        private async void _SendDataToClient(string payload)
-        {
-            var encoded = Encoding.UTF8.GetBytes(payload);
+            var encoded = Encoding.UTF8.GetBytes(data);
             var buffer = new ArraySegment<Byte>(encoded, 0, encoded.Length);
             await _socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public void SendData(Message message)
-        {
-            //first ensure that this message is for this endpoint unless it is
-            //a broadcast message
-            //if (message.DestinationId != null && message.DestinationId != Id )
-            //{
-            //    throw new MisroutingException(Id);
-            //}
-
-            //ensure that the Source endpoint member is NT serialised
-            var payload = JsonConvert.SerializeObject(message);
-            _SendDataToClient(payload);
-        }
-
-        public void OnError(Message message, string error)
-        {
-            //do not send responses back to client for update message types
-            //(data publish or responses)
-            if (message.Type == MessageType.REQUEST)
-            {
-
-                //Send error response to client
-                var response = new Message
-                {
-                    Type = MessageType.RESPONSE_ERROR,
-                    RequestId = message.RequestId,
-                    Payload = error
-                };
-
-                var payload = JsonConvert.SerializeObject(response);
-                _SendDataToClient(payload);
-            }
-        }
-
-        public void OnSucess(Message message)
-        {
-            //do not send responses back to client for update message types
-            //(data publish or responses)
-            if (message.Type == MessageType.REQUEST)
-            {
-                //send a success response back to the client
-                var response = new Message
-                {
-                    Type = MessageType.RESPONSE_SUCCESS,
-                    RequestId = message.RequestId
-                };
-                var payload = JsonConvert.SerializeObject(response);
-
-                _SendDataToClient(payload);
-            }
-        }
-
-        public void EndpointClosed()
-        {
-            _handler.RemoveEndpoint(Id);
-        }
-
-        public bool MatchEndpoint(WebSocket socket)
+        public bool MatchConnection(WebSocket socket)
         {
             return _socket == socket;
         }
     }
+   
+    /// <summary>
+    /// interface defines a class that handles calls from a wsserver web socket
+    /// connection
+    /// </summary>
+    interface ISocketManager
+    {
+        void NewConnection(WebSocket socket, string origin);
+        void CloseConnection(WebSocket socket);
+        void DataRecevied(WebSocket socket, string data);
+    }
 
-    class EndpointManager
+    /// <summary>
+    /// class is an ISocketManager that maintains the concept of
+    /// endpoints. that is, each connection instance is a seperate
+    /// endpoint where each endpoint has a handler chain as defined
+    /// in the IEndpoint interface
+    /// </summary>
+    class EndpointManager : ISocketManager
     {
         //private Dictionary<string, Endpoint> _endpointLookup = new Dictionary<string, Endpoint>();
-        private List<WsEndpoint> _endpoints = new List<WsEndpoint>();
+        private Dictionary<WebsocketConnection, IEndpoint> _endpoints = new Dictionary<WebsocketConnection, IEndpoint>();
         private IHandler _handler;
+        private IAuthenitcationHandler _authHandler;
         private IMessageStats _stats;
 
-        public EndpointManager(IHandler handler, IMessageStats stats)
+        public EndpointManager(IHandler handler, IAuthenitcationHandler authHandler, IMessageStats stats)
         {
             _handler = handler;
+            _authHandler = authHandler;
             _stats = stats;
+        }
+
+        private WebsocketConnection _LookupConnection(WebSocket socket)
+        {
+            return _endpoints.Keys.FirstOrDefault(conn =>
+            {
+                return conn.MatchConnection(socket);
+            });
         }
 
         public void NewConnection(WebSocket socket, string origin)
         {
-            var endpoint = new WsEndpoint(socket, _handler);
-            _endpoints.Add(endpoint);
+            var connection = new WebsocketConnection(socket);
+            var endpoint = new MiddlewareEndpoint(connection, _handler, _authHandler);
+            _endpoints.Add(connection, endpoint);
             _stats.OpenConnection(endpoint.Id, origin);
-            //_endpointLookup.Add(id, endpoint);
         }
 
         public void CloseConnection(WebSocket socket)
         {
-            var endpoint = _endpoints.Find(x => x.MatchEndpoint(socket));
-            if (endpoint != null)
+            var connection = _LookupConnection(socket);
+            if(connection != null)
             {
+                var endpoint = _endpoints[connection];
                 endpoint.EndpointClosed();
+                _endpoints.Remove(connection);
+                _stats.CloseConnection(endpoint.Id);
             }
-            _endpoints.Remove(endpoint);
-            _stats.CloseConnection(endpoint.Id);
         }
 
         public void DataRecevied(WebSocket socket, string data)
         {
-            var endpoint = _endpoints.Find(x => x.MatchEndpoint(socket));
-            if (endpoint != null)
+            var connection = _LookupConnection(socket);
+            if (connection != null)
             {
-                endpoint.DataReceived(data);
+                var endpoint = _endpoints[connection];
+                if(endpoint.Authenticated == false)
+                {
+                    endpoint.AuthenticateEndpoint(data).ContinueWith(t =>
+                   {
+                       if(t.Result == false)
+                       {
+                           //authentication failed,
+                           Console.WriteLine("authentication failed!!. removing endpoint");
+                           _endpoints.Remove(connection);
+                       }
+                       Console.WriteLine("authentication succeded!");
+                   });
+                }
+                else
+                {
+                    endpoint.DataReceived(data);
+                }
             }
         }
-
-        public IMessageStats GetStats()
-        {
-            return _stats;
-        }
-
-        //public void SendData(string id, string data)
-        //{
-
-        //}
     }
+
+    /// <summary>
+    /// web socket server class encapsulates a websocket connection
+    /// </summary>
     class WSServer
     {
         private HttpListener _httpListener;
-        private EndpointManager _manager;
+        private ISocketManager _manager;
 
-        private string _root;
-
-        public WSServer(EndpointManager manager, string root)
+        public WSServer(ISocketManager manager)
         {
             _httpListener = new HttpListener();
             _manager = manager;
-            _root = root;
         }
 
         //read the data from the web socket request
@@ -237,15 +187,48 @@ namespace Middleware
             }
         }
 
-        private async Task _ProcessConnection(HttpListenerContext context)
+        private string GetHeaderValue(HttpListenerRequest context, string key, string defaultVal)
         {
+            foreach (var name in context.Headers.AllKeys)
+            {
+                var header = context.Headers.GetValues(name);
+                Console.WriteLine("Header name: {0}, value: {1}", name, header[0]);
+            }
+
+            //byte[] buffer = System.Text.Encoding.UTF8.GetBytes(convert);
+            //var str = System.Text.Encoding.UTF8.GetString(result);
+            //Convert.FromBase64String();
+            //Convert.ToBase64String();
+
+            var vals = context.Headers.GetValues(key);
+            return (vals != null) && (vals.Length > 0) ? vals[0] : defaultVal;
+        }
+
+        private string GetDecryptedHeaderValue(HttpListenerRequest context, string key)
+        {
+            var headerVal = GetHeaderValue(context, key, "");
+            if(string.IsNullOrEmpty(headerVal) == false)
+            {
+                //always assume UTF8 encoding
+                var rawVal = Convert.FromBase64String(headerVal);
+                return System.Text.Encoding.UTF8.GetString(rawVal);
+                //byte[] buffer = System.Text.Encoding.UTF8.GetBytes(headerVal);
+                //var str = System.Text.Encoding.UTF8.GetString(result);
+                //Convert.FromBase64String();
+                //Convert.ToBase64String();
+            }
+            return headerVal;
+        }
+
+        private async void _ProcessConnection(HttpListenerContext context)
+        {
+            var authKey = GetDecryptedHeaderValue(context.Request, MessageHeaders.AUTHENTICATION_KEY);
             if (context.Request.IsWebSocketRequest == true)
             {
                 Console.WriteLine("connection received");
                 HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
                 WebSocket ws = webSocketContext.WebSocket;
-                var vals = webSocketContext.Headers.GetValues(MessageHeaders.CLIENTLOCATION);
-                var origin = (vals != null) && (vals.Length > 0) ? vals[0] :  webSocketContext.Origin;
+                var origin = GetHeaderValue(context.Request, MessageHeaders.CLIENTLOCATION, webSocketContext.Origin);
                 _manager.NewConnection(ws, origin);
                 while (ws.State == WebSocketState.Open)
                 {
@@ -254,7 +237,7 @@ namespace Middleware
                     {
                         _manager.DataRecevied(ws, data);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         Console.WriteLine("error handling received data: {0}", e.Message);
                     }
@@ -264,34 +247,17 @@ namespace Middleware
             }
             else
             {
-                //standard http request. if url spcified then open file from fs
-                //othwerwise return full stats page
-                string result = null;
-                if (context.Request.RawUrl != "/")
-                {
-                    var filename = Path.Combine(_root, context.Request.RawUrl.Trim('/'));
-                    using (var indexFile = new StreamReader(filename))
-                    {
-                        result = indexFile.ReadToEnd();
-                    }
-                }
-                else
-                {
-                    result = _manager.GetStats().ToXML();
-                }
-                if (result != null)
-                {
-                    result += "\n";
-                    var encoded = Encoding.UTF8.GetBytes(result);
-                    //await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
-                    context.Response.Close(encoded, false);
-                }
+                _ProcessHttpRequest(context);
             }
         }
 
-        public void Start(string url, int maxConnections)
+        public void Start(string[] urls, int maxConnections)
         {
-            _httpListener.Prefixes.Add(url);
+            foreach (var url in urls)
+            {
+                _httpListener.Prefixes.Add(url);
+            }
+             
             _httpListener.Start();
 
             var sem = new Semaphore(maxConnections, maxConnections);
@@ -303,7 +269,7 @@ namespace Middleware
                 _httpListener.GetContextAsync().ContinueWith(async (t) =>
                 {
                     var context = await t;
-                    await _ProcessConnection(context);
+                     _ProcessConnection(context);
                     sem.Release();
                 });
 #pragma warning restore 4014
@@ -313,6 +279,78 @@ namespace Middleware
         public void Stop()
         {
             _httpListener.Close();
+        }
+
+        protected virtual void _ProcessHttpRequest(HttpListenerContext context) { }
+
+    }
+
+    /// <summary>
+    /// class encapsulates an endpoint service connection, this is an
+    /// extended web socket connection that also handles http requests
+    /// to make it a complete web server
+    /// </summary>
+    class Endpointserver : WSServer
+    {
+        private string _root;
+        private IMessageStats _stats;
+
+        public Endpointserver(ISocketManager manager, string root, IMessageStats stats)  :
+            base(manager)
+        {
+            _root = root;
+            _stats = stats;
+        }
+
+        protected override void _ProcessHttpRequest(HttpListenerContext context)
+        {
+            //standard http request. if url spcified then open file from fs
+            //othwerwise return full stats page
+            string result = null;
+            if (context.Request.RawUrl != "/")
+            {
+                try
+                {
+                    var filename = Path.Combine(_root, context.Request.RawUrl.Trim('/'));
+                    using (var indexFile = new StreamReader(filename))
+                    {
+                        result = indexFile.ReadToEnd();
+                    }
+                }
+                catch (FileNotFoundException) { }
+            }
+            else
+            {
+                result = _stats.ToXML();
+            }
+            if (result != null)
+            {
+                result += "\n";
+                var encoded = Encoding.UTF8.GetBytes(result);
+                //await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
+                context.Response.Close(encoded, false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// class handles authentication clients for the server
+    /// </summary>
+    class AuthenticationManager : ISocketManager
+    {
+        public void CloseConnection(WebSocket socket)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DataRecevied(WebSocket socket, string data)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void NewConnection(WebSocket socket, string origin)
+        {
+            throw new NotImplementedException();
         }
     }
 }

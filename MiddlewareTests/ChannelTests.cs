@@ -28,8 +28,13 @@ namespace MiddlewareTests
                 _id = source ?? "TestId";
                 ErrorEvent = new ManualResetEvent(false);
                 SuccessEvent = new ManualResetEvent(false);
-
             }
+
+            public void DataReceived(string data) { }
+
+            public bool Authenticated { get { return true; } }
+            public Task<bool> AuthenticateEndpoint(string data) { return null; }
+
             public string DataSent { get; private set; }
             public string Id { get { return _id; } }
             public void SendData(Message message) { DataSent = message.Payload; }
@@ -47,17 +52,21 @@ namespace MiddlewareTests
                 ResultMessage = message;
                 SuccessEvent.Set();
             }
+
+            public void EndpointClosed() { }
         }
 
-        private Message _createTestMessage(string channelName, IEndpoint source, string payload = "data")
+        private MiddlewareMessage _createTestMessage(string channelName, IEndpoint source, string payload = "data")
         {
-            return new Message
-            {
-                Channel = channelName,
-                Payload = payload,
-                Source = source,
-                SourceId = source != null  ? source.Id : null
-            };
+            return new MiddlewareMessage(
+                 new Message
+                 {
+                     Channel = channelName,
+                     Payload = payload,
+                     SourceId = source != null ? source.Id : null
+                 },
+                source
+            );
         }
 
         [TestMethod]
@@ -95,7 +104,7 @@ namespace MiddlewareTests
             var UoT = new Channels(null);
             var source = new TestEndpoint(null);
             var message = _createTestMessage("Channel1", source);
-            message.DestinationId = "invalid user";
+            message.Payload.DestinationId = "invalid user";
             UoT.SendMessage(message);
             var result = source.ErrorEvent.WaitOne(5000);
             Assert.IsTrue(result);
@@ -247,7 +256,7 @@ namespace MiddlewareTests
             var source2 = new TestEndpoint("Test2");
             var message1 = _createTestMessage("channel1", source1);
             var message2 = _createTestMessage("channel1", source2, "test");
-            message2.DestinationId = source1.Id;
+            message2.Payload.DestinationId = source1.Id;
             OuT.AddListener(message2);
             OuT.SendRequest(message1);
             OuT.SendMessage(message2);
@@ -286,8 +295,8 @@ namespace MiddlewareTests
             var UoT = new MessageStats("test", 10);
             var source = new TestEndpoint(null);
             var message = _createTestMessage("Channel1", source);
-            message.Type = MessageType.REQUEST;
-            UoT.UpdateChannelStats(message);
+            message.Payload.Type = MessageType.REQUEST;
+            UoT.UpdateChannelStats(message.Payload);
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(1, result.Channels.Length);
@@ -301,8 +310,8 @@ namespace MiddlewareTests
             var UoT = new MessageStats("test", 10);
             var source = new TestEndpoint(null);
             var message = _createTestMessage("Channel1", source);
-            message.Type = MessageType.UPDATE;
-            UoT.UpdateChannelStats(message);
+            message.Payload.Type = MessageType.UPDATE;
+            UoT.UpdateChannelStats(message.Payload);
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(1, result.Channels.Length);
@@ -353,8 +362,8 @@ namespace MiddlewareTests
             var source = new TestEndpoint("123");
             UoT.OpenConnection(source.Id, "abcd");
             var message = _createTestMessage("Channel1", source);
-            message.Type = MessageType.UPDATE;
-            UoT.UpdateChannelStats(message);
+            message.Payload.Type = MessageType.UPDATE;
+            UoT.UpdateChannelStats(message.Payload);
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(1, result.Connections.Length);

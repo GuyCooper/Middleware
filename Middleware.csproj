@@ -47,7 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AuthenitcationHandler.cs" />
     <Compile Include="Channels.cs" />
+    <Compile Include="Endpoint.cs" />
     <Compile Include="Handlers.cs" />
     <Compile Include="LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="MessageStats.cs" />

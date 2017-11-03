@@ -1,0 +1,5 @@
+makecert -sk vMiddlewareSignedByCA -iv vMiddlewareCA.pvk -n "CN=vMiddlewareSignedByCA" -ic vMiddleware.cer vMiddlewareSignedByCA.cer -sr localmachine -ss My
+
+‎7c27a7c6c83f155bb8d8da1a8994a3f9e8617761
+
+netsh http addsslcert ipport=0.0.0.0:8443 certhash=‎7c27a7c6c83f155bb8d8da1a8994a3f9e8617761 appid={b6c63b5e-3e21-40c0-8686-478d8c6a6afc}

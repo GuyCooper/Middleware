@@ -64,7 +64,9 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="AuthenticationTests.cs" />
     <Compile Include="ChannelTests.cs" />
+    <Compile Include="EndpointTests.cs" />
     <Compile Include="HandlerTests.cs" />
     <Compile Include="Properties\MessageTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

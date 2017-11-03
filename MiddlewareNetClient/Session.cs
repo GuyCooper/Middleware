@@ -32,6 +32,8 @@ namespace MiddlewareNetClient
             {
                 _ws = new ClientWebSocket();
                 _ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTLOCATION, System.Environment.MachineName);
+                _ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTUSERNAME, "admin");
+                _ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTPASSWORD, "password");
 
                 await _ws.ConnectAsync(_uri, System.Threading.CancellationToken.None).ContinueWith(async (t) =>
                 {

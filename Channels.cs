@@ -46,12 +46,12 @@ namespace Middleware
 
     interface IChannel
     {
-        void AddSubscriber(Message message); //add a subscriber to a channel to receive any broadcasts
-        void RemoveSubscriber(Message message); //remove subscriber
-        void SendMessage(Message message); //send a message to a specified recipient
-        void AddListener(Message message); //add a listener to handle all requests on a channel
-        void SendRequest(Message message); //send a request to a channel, must have a listener to be processed
-        void PublishMessage(Message message); //broadcast a message to a channel, will be handled by all subscribers
+        void AddSubscriber(MiddlewareMessage message); //add a subscriber to a channel to receive any broadcasts
+        void RemoveSubscriber(MiddlewareMessage message); //remove subscriber
+        void SendMessage(MiddlewareMessage message); //send a message to a specified recipient
+        void AddListener(MiddlewareMessage message); //add a listener to handle all requests on a channel
+        void SendRequest(MiddlewareMessage message); //send a request to a channel, must have a listener to be processed
+        void PublishMessage(MiddlewareMessage message); //broadcast a message to a channel, will be handled by all subscribers
         void RemoveEndpoint(string id); //remove endpoint from all channels
     }
     class Channel :IChannel
@@ -63,7 +63,7 @@ namespace Middleware
 
         public string Name { get; set; }
 
-        private IEndpoint _GetSubscriber(Message message)
+        private IEndpoint _GetSubscriber(MiddlewareMessage message)
         {
             if(message == null)
             {
@@ -75,7 +75,7 @@ namespace Middleware
             }
             return message.Source;
         }
-        public void AddSubscriber(Message message)
+        public void AddSubscriber(MiddlewareMessage message)
         {
             var subscriber = _GetSubscriber(message);
             if(_subscribers.ContainsKey(subscriber.Id) == false)
@@ -84,7 +84,7 @@ namespace Middleware
             }
         }
 
-        public void RemoveSubscriber(Message message)
+        public void RemoveSubscriber(MiddlewareMessage message)
         {
             var subscriber = _GetSubscriber(message);
             if (_subscribers.ContainsKey(subscriber.Id) == true)
@@ -94,44 +94,46 @@ namespace Middleware
         }
 
         //send a message to a speciifed recipient
-        public void SendMessage(Message message)
+        public void SendMessage(MiddlewareMessage message)
         {
             //destination specified
+            var payload = message.Payload;
             IEndpoint destination;
-            if (message.DestinationId != null && _requesters.TryGetValue(message.DestinationId, out destination) == true)
+            if (payload.DestinationId != null && _requesters.TryGetValue(payload.DestinationId, out destination) == true)
             {
-                destination.SendData(message);
+                destination.SendData(payload);
             }
             else
             {
-                throw new InvalidDestinationException(Name, message.DestinationId);
+                throw new InvalidDestinationException(Name, payload.DestinationId);
             }
         }
 
-        public void AddListener(Message message)
+        public void AddListener(MiddlewareMessage message)
         {
             var source = _GetSubscriber(message);
             _PrimaryRequestHandler = source;
         }
 
-        public void SendRequest(Message message)
+        public void SendRequest(MiddlewareMessage message)
         {
+            var payload = message.Payload;
             if(_PrimaryRequestHandler != null)
             {
-                message.DestinationId = _PrimaryRequestHandler.Id;
+                payload.DestinationId = _PrimaryRequestHandler.Id;
                 if(message.Source == null)
                 {
                     throw new InvalidSourceException(Name);
                 }
 
-                var lookup = message.SourceId ?? message.Source.Id;
+                var lookup = payload.SourceId ?? message.Source.Id;
 
                 if(_requesters.ContainsKey(lookup) == false)
                 {
                     _requesters.Add(lookup, message.Source);
                 }
 
-                _PrimaryRequestHandler.SendData(message);
+                _PrimaryRequestHandler.SendData(payload);
             }
             else
             {
@@ -140,12 +142,13 @@ namespace Middleware
         }
 
         //broadcast message to al listeners
-        public void PublishMessage(Message message)
+        public void PublishMessage(MiddlewareMessage message)
         {
+            var payload = message.Payload;
             //no destination send to all subscribers
             foreach(var IEndpoint in _subscribers.Values)
             {
-                IEndpoint.SendData(message);
+                IEndpoint.SendData(payload);
             }
         }
         public void RemoveEndpoint(string id)
@@ -192,16 +195,17 @@ namespace Middleware
             return channel;
         }
 
-        private void _ProcessChannelCommand(Message message, Action<IChannel> command)
+        private void _ProcessChannelCommand(MiddlewareMessage message, Action<IChannel> command)
         {
             var source = message.Source;
+            var payload = message.Payload;
             try
             {
-                var channel = _getchannel(message.Channel);
+                var channel = _getchannel(payload.Channel);
                 command(channel);
                 if (_stats != null)
                 {
-                    _stats.UpdateChannelStats(message);
+                    _stats.UpdateChannelStats(payload);
                 }
             }
             catch(Exception e)
@@ -209,18 +213,18 @@ namespace Middleware
                 
                 if(source != null)
                 {
-                    source.OnError(message, e.Message);
+                    source.OnError(payload, e.Message);
                 }
                 return;
             }
 
             if(source != null)
             {
-                source.OnSucess(message);
+                source.OnSucess(payload);
             }
         }
 
-        public async void AddListener(Message message)
+        public async void AddListener(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() => 
             {
@@ -231,7 +235,7 @@ namespace Middleware
             });
         }
 
-        public async void AddSubscriber(Message message)
+        public async void AddSubscriber(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() =>
             {
@@ -242,20 +246,21 @@ namespace Middleware
             });
         }
 
-        public async void RemoveSubscriber(Message message)
+        public async void RemoveSubscriber(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() =>
             {
-                _channelLookup.Remove(message.Channel);
+                var payload = message.Payload;
+                _channelLookup.Remove(payload.Channel);
                 var source = message.Source;
                 if(source != null)
                 {
-                    source.OnSucess(message);
+                    source.OnSucess(payload);
                 }
             });
         }
 
-        public async void SendMessage(Message message)
+        public async void SendMessage(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() =>
             {
@@ -266,7 +271,7 @@ namespace Middleware
             });
         }
 
-        public async void SendRequest(Message message)
+        public async void SendRequest(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() =>
             {
@@ -277,7 +282,7 @@ namespace Middleware
             });
         }
 
-        public async void PublishMessage(Message message)
+        public async void PublishMessage(MiddlewareMessage message)
         {
             await _taskFactory.StartNew(() =>
             {

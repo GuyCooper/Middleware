@@ -9,12 +9,12 @@ var MiddleWare = function () {
     var ws;
     var callQueue = [];
 
-    this.Connect = function (server, onopen, onerror, onmessage) {
+    this.Connect = function (server, username, password, onopen, onerror, onmessage) {
         ws = new WebSocket(server);
 
        ws.onopen = function () {
             console.log("onopen");
-            onopen();
+            sendLoginRequest(username, password);
         }.bind(this);
 
         ws.onerror = function (error) {
@@ -29,7 +29,7 @@ var MiddleWare = function () {
                     //message found. remove it from queue
                     callQueue.splice(i, 1);
                     if(success) {
-                        msg.succeed();
+                        msg.succeed(message.payload);
                     }
                     else {
                         msg.failed(message.payload);
@@ -37,6 +37,27 @@ var MiddleWare = function () {
                     break;
                 }
             }
+        };
+
+        var loginSuccess = function (message) {
+            if (onopen != null) {
+                onopen(message);
+            }
+        };
+
+        var loginFail = function(message) {
+            if (onerror != null) {
+                onerror(message);
+            }
+        };
+
+        var sendLoginRequest = function (username, password) {
+            var loginRequest = {
+                UserName: username,
+                Password: password
+            };
+
+            processRequestInternal("LOGIN", "DOLOGIN", 0, JSON.stringify(loginRequest), null, loginSuccess, loginFail);
         };
 
         ws.onmessage = function (data) {
@@ -66,29 +87,33 @@ var MiddleWare = function () {
         };
     };
 
+    var processRequestInternal = function(channel, command, type, data, destination, resolve, reject) {
+        var id = "test_" + uid++;
+        var payload = {
+            RequestId: id,
+            Command: command,
+            Channel: channel,
+            Type: type,
+            Payload: data,
+            DestinationId: destination
+        };
+
+        //add al request type messages to call queue. this means that we expect a response
+        //for thenm from the server
+        if (type === 0) {
+            callQueue.push({
+                id: id,
+                succeed: resolve,
+                failed: reject
+            });
+        }
+
+        ws.send(JSON.stringify(payload));
+    }
+
     var processRequest = function(channel, command, type, data, destination) {
-        return new Promise(function(resolve, reject) {
-            var id = "test_" + uid++;
-            var payload = {
-                RequestId : id,
-                Command: command,
-                Channel: channel,
-                Type: type,
-                Payload : data,
-                DestinationId: destination
-            };
-
-            //add al request type messages to call queue. this means that we expect a response
-            //for thenm from the server
-            if (type === 0) {
-                callQueue.push({
-                    id: id,
-                    succeed: resolve,
-                    failed: reject
-                });
-            }
-
-            ws.send(JSON.stringify(payload));
+        return new Promise(function (resolve, reject) {
+            processRequestInternal(channel, command, type, data, destination, resolve, reject);
         });
 
     };
