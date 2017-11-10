@@ -57,6 +57,7 @@
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
+            this.lstMessages = new System.Windows.Forms.ListBox();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.SuspendLayout();
@@ -242,7 +243,7 @@
             this.panel2.Controls.Add(this.label8);
             this.panel2.Location = new System.Drawing.Point(48, 407);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(636, 259);
+            this.panel2.Size = new System.Drawing.Size(636, 225);
             this.panel2.TabIndex = 4;
             // 
             // btnBroadcast
@@ -333,11 +334,21 @@
             this.label12.TabIndex = 6;
             this.label12.Text = "Connect To Server";
             // 
+            // lstMessages
+            // 
+            this.lstMessages.FormattingEnabled = true;
+            this.lstMessages.ItemHeight = 20;
+            this.lstMessages.Location = new System.Drawing.Point(53, 650);
+            this.lstMessages.Name = "lstMessages";
+            this.lstMessages.Size = new System.Drawing.Size(631, 84);
+            this.lstMessages.TabIndex = 7;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(721, 678);
+            this.ClientSize = new System.Drawing.Size(721, 772);
+            this.Controls.Add(this.lstMessages);
             this.Controls.Add(this.label12);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.panel1);
@@ -387,6 +398,7 @@
         private System.Windows.Forms.TextBox txtPublishMessage;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label label12;
+        private System.Windows.Forms.ListBox lstMessages;
     }
 }
 

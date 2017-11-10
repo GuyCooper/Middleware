@@ -51,5 +51,6 @@ namespace Middleware
         public string Password { get; set; }
         public string Version { get; set; }
         public string AppName { get; set; }
+        public string Source { get; set; }
     }
 }

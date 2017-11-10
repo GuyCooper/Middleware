@@ -69,6 +69,8 @@
          <tr bgcolor="#9acd32">
            <th>id</th>
            <th>remote address</th>
+           <th>app name</th>
+           <th>version</th>
            <th>requests</th>
            <th>updates</th>
          </tr>
@@ -79,6 +81,12 @@
              </td>
              <td>
                <xsl:value-of select="remote-address"/>
+             </td>
+             <td>
+               <xsl:value-of select="app-name"/>
+             </td>
+             <td>
+               <xsl:value-of select="version"/>
              </td>
              <td>
                <xsl:value-of select="requests"/>

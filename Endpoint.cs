@@ -15,6 +15,19 @@ namespace Middleware
         Task SendData(string data);
     }
 
+    internal class AuthResponse
+    {
+        public AuthResponse(bool success, string message, LoginPayload payload)
+        {
+            Success = success;
+            Payload = payload;
+            Message = message;
+        }
+
+        public bool Success { get; private set; }
+        public string Message { get; private set; }
+        public LoginPayload Payload { get; set; }
+    }
     /// <summary>
     /// interface defines an internal representation of the Message class 
     /// </summary>
@@ -42,7 +55,7 @@ namespace Middleware
         void OnSucess(Message message);
         void DataReceived(string data);
         bool Authenticated { get; }
-        Task<bool> AuthenticateEndpoint(string data);
+        Task<AuthResponse> AuthenticateEndpoint(string data);
         void EndpointClosed();
     }
 
@@ -67,11 +80,11 @@ namespace Middleware
             _authHandler = authHandler;
         }
 
-        public async Task<bool> AuthenticateEndpoint(string data)
+        public async Task<AuthResponse> AuthenticateEndpoint(string data)
         {
             if (string.IsNullOrEmpty(data))
             {
-                return false;
+                return new AuthResponse(false, "invalid payload", null);
             }
 
             Message message;
@@ -80,31 +93,32 @@ namespace Middleware
                 message = JsonConvert.DeserializeObject<Message>(data);
                 if (message.Command != HandlerNames.LOGIN)
                 {
-                    Console.WriteLine("Cannot process request. User not authenticated");
-                    return false;
+                    return new AuthResponse(false, "Cannot process request. User not authenticated", null);
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("cannot deserailise login message. {0}", e.Message);
-                return false;
+                return new AuthResponse(false, "cannot deserailise login message. " + e.Message, null);
             }
 
             LoginPayload login = JsonConvert.DeserializeObject<LoginPayload>(message.Payload);
 
             var result = await _authHandler.HandleClientAuthentication(login.UserName, login.Password);
+            string responseString;    
             if (result == true)
             {
-                message.Payload = "authentication succeded";
+                responseString = "authentication succeded";
+                message.Payload = responseString;
                 OnSucess(message);
                 Authenticated = true;
             }
             else
             {
-                OnError(message, "authentication failed");
+                responseString = "authentication failed";
+                OnError(message, responseString);
             }
 
-            return result;
+            return new AuthResponse(result, responseString, login);
         }
 
         public void DataReceived(string data)

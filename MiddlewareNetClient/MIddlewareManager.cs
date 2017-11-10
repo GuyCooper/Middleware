@@ -17,58 +17,92 @@ namespace MiddlewareNetClient
         void OnConnectionClosed(ISession session);
     }
 
-    public class MiddlewareRequestParams
+    public interface ILogger
     {
-        public MiddlewareRequestParams(string channel, SendDataCallback success, SendDataCallback fail )
+        void LogError(string error);
+        void LogMessage(string message);
+    }
+
+    public class SendDataResponse
+    {
+        public void Update(ISession session, string payload, bool success)
         {
-            Channel = channel;
-            OnSuccess = success;
-            OnFail = fail;
+            Session = session;
+            Payload = payload;
+            Success = success;
         }
 
-        public string Channel { get; private set; }
-        public SendDataCallback OnSuccess { get; private set; }
-        public SendDataCallback OnFail { get; private set; }
-    };
+        public ISession Session { get; private set; }
+        public string Payload { get; private set; }
+        public bool Success { get; set; }
+    }
 
     public class MiddlewareManager : IMiddlewareManager
     {
-        private Dictionary<string, MiddlewareRequestParams> currentRequestsList_ = new Dictionary<string, MiddlewareRequestParams>();
+        private readonly string VERSION = "1.0";
+        private readonly string APPNAME = "NET Client Library";
+
+        private Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>> currentRequestsList_ = new Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>>();
+
         private HandleData _messageCallbackHandler = null;
 
-        public bool SubscribeToChannel(ISession session, MiddlewareRequestParams prms)
+        public Task<SendDataResponse> SubscribeToChannel(ISession session, string channel)
         {
-            return _RequestImp(session, prms, HandlerNames.SUBSCRIBETOCHANNEL, MessageType.REQUEST, "", "");
+            return _RequestImp(session, channel, HandlerNames.SUBSCRIBETOCHANNEL, "", "");
         }
 
-        public bool SendMessageToChannel(ISession session, MiddlewareRequestParams prms, string payload, string destination)
+        public void SendMessageToChannel(ISession session, string channel, string payload, string destination)
         {
             if (string.IsNullOrEmpty(destination))
             {
                 throw new ArgumentException("must specify a valid destination for sendMessage");
             }
 
-            return _RequestImp(session, prms, HandlerNames.SENDMESSAGE, MessageType.UPDATE, payload, destination);
+            _PublishImp(session, channel, HandlerNames.SENDMESSAGE, payload, destination);
         }
 
-	    public bool AddChannelListener(ISession session, MiddlewareRequestParams prms)
+	    public Task<SendDataResponse> AddChannelListener(ISession session, string channel)
         {
-            return _RequestImp(session, prms, HandlerNames.ADDLISTENER, MessageType.REQUEST,  "", "");
+            return _RequestImp(session, channel, HandlerNames.ADDLISTENER, "", "");
         }
 
-        public bool SendRequest(ISession session, MiddlewareRequestParams prms, string payload)
+        public Task<SendDataResponse> SendRequest(ISession session, string channel, string payload)
         {
-            return _RequestImp(session, prms, HandlerNames.SENDREQUEST, MessageType.REQUEST, payload, "");
+            return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "");
         }
 
-	    public bool PublishMessage(ISession session, MiddlewareRequestParams prms, string payload)
+	    public void PublishMessage(ISession session, string channel, string payload)
         {
-            return _RequestImp(session, prms, HandlerNames.PUBLISHMESSAGE, MessageType.UPDATE, payload, "");
+            _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "");
         }
 
-	    public ISession  CreateSession(string url)
+	    public async Task<ISession> CreateSession(string url, string username, string password, ILogger logger)
         {
-            return new WebSocketSession(this, url);
+            var session =  new WebSocketSession(this, url);
+            //first connect to the server
+            await session.Connect();
+
+            //send login request otherwise cannot use connection
+            var login = new Middleware.LoginPayload
+            {
+                UserName = username,
+                Password = password,
+                Source = System.Environment.MachineName,
+                AppName = APPNAME,
+                Version = VERSION,
+            };
+
+            var response = await _RequestImp(session, "LOGIN", HandlerNames.LOGIN, JsonConvert.SerializeObject(login), null);
+            if(response.Success == true)
+            {
+                logger.LogMessage(string.Format("Connect success. {0}", response.Payload));
+                return session;
+            }
+            else
+            {
+                logger.LogError(string.Format("Connect failed. {0}", response.Payload));
+                return null;
+            }
         }
 
         public void RegisterMessageCallbackFunction(HandleData msgCallback)
@@ -76,27 +110,49 @@ namespace MiddlewareNetClient
             _messageCallbackHandler = msgCallback;
         }
 
-        private bool _RequestImp(ISession session, MiddlewareRequestParams prms, string command, MessageType type, string payload, string destination)
+        private Message _CreateMessage(string channel, string command, string payload, string destination, MessageType type)
         {
-            var msg = new Message
+            return new Message
             {
-                Channel = prms.Channel,
+                Channel = channel,
                 Command = command,
                 DestinationId = destination,
                 Payload = payload,
                 Type = type,
                 RequestId = Guid.NewGuid().ToString()
             };
+        }
 
-            currentRequestsList_.Add(msg.RequestId, prms);
+        private void _SendMessageImpl(ISession session, Message message)
+        {
+            var serialised = JsonConvert.SerializeObject(message);
+            session.SendMessage(serialised);
+        }
 
-            if (session != null)
+        private void _PublishImp(ISession session, string channel, string command, string payload, string destination)
+        {
+            if (session == null)
             {
-                var serialised =  JsonConvert.SerializeObject(msg);
-                session.SendMessage(serialised);
-                return true;
+                throw new ArgumentNullException("session is null!!");
             }
-            return false;
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.UPDATE);
+            _SendMessageImpl(session, message);
+        }
+
+        private Task<SendDataResponse> _RequestImp(ISession session, string channel, string command, string payload, string destination)
+        {
+            if (session == null)
+            {
+                throw new ArgumentNullException("session is null!!");
+            }
+
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.REQUEST);
+
+            var response = new SendDataResponse();
+            var task = new Task<SendDataResponse>(() => { return response; });
+            currentRequestsList_.Add(message.RequestId, new Tuple<SendDataResponse, Task<SendDataResponse>>(response, task));
+            _SendMessageImpl(session, message);
+            return task;
         }
 
         public void OnMessageCallback(ISession session, string data)
@@ -111,16 +167,19 @@ namespace MiddlewareNetClient
                 return;
             }
 
-            MiddlewareRequestParams prms;
-            if(currentRequestsList_.TryGetValue(msg.RequestId, out prms) == true)
+            Tuple< SendDataResponse, Task<SendDataResponse>> entry;
+            if(currentRequestsList_.TryGetValue(msg.RequestId, out entry) == true)
             {
                 if(msg.Type == MessageType.RESPONSE_SUCCESS)
                 {
-                    prms.OnSuccess?.Invoke(session, msg.Payload);
+                    entry.Item1.Update(session, msg.Payload, true);
+                    entry.Item2.Start();
                 }
                 else if (msg.Type == MessageType.RESPONSE_ERROR)
                 {
-                    prms.OnFail?.Invoke(session, msg.Payload);
+                    entry.Item1.Update(session, msg.Payload, false);
+                    entry.Item2.Start();
+
                 }
                 currentRequestsList_.Remove(msg.RequestId);
             }

@@ -29,10 +29,10 @@ var MiddleWare = function () {
                     //message found. remove it from queue
                     callQueue.splice(i, 1);
                     if(success) {
-                        msg.succeed(message.payload);
+                        msg.succeed(message.Payload);
                     }
                     else {
-                        msg.failed(message.payload);
+                        msg.failed(message.Payload);
                     }
                     break;
                 }
@@ -54,7 +54,10 @@ var MiddleWare = function () {
         var sendLoginRequest = function (username, password) {
             var loginRequest = {
                 UserName: username,
-                Password: password
+                Password: password,
+                Source: window.location.hostname,
+                AppName: "Javascript App",
+                Version: "1.0"
             };
 
             processRequestInternal("LOGIN", "DOLOGIN", 0, JSON.stringify(loginRequest), null, loginSuccess, loginFail);

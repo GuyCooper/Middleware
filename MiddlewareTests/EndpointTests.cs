@@ -39,7 +39,7 @@ namespace MiddlewareTests
     public class EndpointTests
     {
         private readonly static string TestChannel = "TestChannel";
-        private readonly static string TestCommand = "SEND_REQUEST";
+        //private readonly static string TestCommand = "SEND_REQUEST";
         private readonly static string TestPayload = "Test Payload";
         private readonly static string TestDestination = "123 456 ";
         private readonly static string TestRequestId = "987 543";
@@ -105,7 +105,7 @@ namespace MiddlewareTests
 
             endpoint.AuthenticateEndpoint(payload).ContinueWith(t =>
            {
-               Assert.IsTrue(t.Result);
+               Assert.IsTrue(t.Result.Success);
                Assert.IsTrue(endpoint.Authenticated);
            });
         }

@@ -16,6 +16,10 @@ namespace Middleware
         public string Id { get; set; }
         [XmlElement("remote-address")]
         public string Address { get; set; }
+        [XmlElement("app-name")]
+        public string AppName { get; set; }
+        [XmlElement("version")]
+        public string Version { get; set; }
         [XmlElement("requests")]
         public int Requests { get; set; }
         [XmlElement("data")]
@@ -51,7 +55,7 @@ namespace Middleware
     interface IMessageStats
     {
         void UpdateChannelStats(Message message);
-        void OpenConnection(string id, string origin);
+        void NewConnection(string id, string source, string appName, string version);
         void CloseConnection(string id);
         IEnumerable<ChannelStats> GetChannelsStats();
         string ToXML();
@@ -107,7 +111,7 @@ namespace Middleware
             }
         }
 
-        public void OpenConnection(string id, string origin)
+        public void NewConnection(string id, string source, string appName, string version)
         {
             if (_connections.Find(x => x.Id == id) == null)
             {
@@ -115,7 +119,9 @@ namespace Middleware
                 _connections.Add(new Connection
                 {
                     Id = id,
-                    Address = origin
+                    Address = source,
+                    AppName = appName,
+                    Version = version
                 });
             }
         }

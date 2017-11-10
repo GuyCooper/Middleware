@@ -23,12 +23,13 @@
     <script type="text/javascript">
         var mw = new MiddleWare();
         
-        var onConnected = function() {
+        var onConnected = function (message) {
+            alert("connected ok: " + message);
             document.getElementById('action').style.display = 'block';
         };
 
-        var onError = function() {
-            alert("error occured!");
+        var onError = function(error) {
+            alert("error occured: " + error);
         };
 
         var onMessage = function (message) {

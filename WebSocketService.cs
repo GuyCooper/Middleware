@@ -83,7 +83,6 @@ namespace Middleware
             var connection = new WebsocketConnection(socket);
             var endpoint = new MiddlewareEndpoint(connection, _handler, _authHandler);
             _endpoints.Add(connection, endpoint);
-            _stats.OpenConnection(endpoint.Id, origin);
         }
 
         public void CloseConnection(WebSocket socket)
@@ -108,13 +107,22 @@ namespace Middleware
                 {
                     endpoint.AuthenticateEndpoint(data).ContinueWith(t =>
                    {
-                       if(t.Result == false)
+                       var response = t.Result;
+                       Console.WriteLine(response.Message);
+                       if (response.Success == false)
                        {
                            //authentication failed,
-                           Console.WriteLine("authentication failed!!. removing endpoint");
+                           Console.WriteLine("removing endpoint");
                            _endpoints.Remove(connection);
                        }
-                       Console.WriteLine("authentication succeded!");
+                       else
+                       {
+                           var payload = response.Payload;
+                           _stats.NewConnection(endpoint.Id, 
+                                                payload.Source,
+                                                payload.AppName,
+                                                payload.Version);
+                       }
                    });
                 }
                 else
@@ -232,9 +240,9 @@ namespace Middleware
                 _manager.NewConnection(ws, origin);
                 while (ws.State == WebSocketState.Open)
                 {
-                    string data = await _readDatafromSocket(ws);
                     try
                     {
+                        string data = await _readDatafromSocket(ws);
                         _manager.DataRecevied(ws, data);
                     }
                     catch (Exception e)

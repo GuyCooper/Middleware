@@ -33,7 +33,7 @@ namespace MiddlewareTests
             public void DataReceived(string data) { }
 
             public bool Authenticated { get { return true; } }
-            public Task<bool> AuthenticateEndpoint(string data) { return null; }
+            public Task<AuthResponse> AuthenticateEndpoint(string data) { return null; }
 
             public string DataSent { get; private set; }
             public string Id { get { return _id; } }
@@ -333,8 +333,8 @@ namespace MiddlewareTests
         public void TestStatsOpenConnection()
         {
             var UoT = new MessageStats("test", 10);
-            UoT.OpenConnection("123", "abcd");
-            UoT.OpenConnection("456", "abcd");
+            UoT.NewConnection("123", "abcd", "test", "1.0");
+            UoT.NewConnection("456", "abcd", "test", "1.1");
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(2, result.Connections.Length);
@@ -345,8 +345,8 @@ namespace MiddlewareTests
         public void TestStatsCloseConnection()
         {
             var UoT = new MessageStats("test", 10);
-            UoT.OpenConnection("123", "abcd");
-            UoT.OpenConnection("456", "abcd");
+            UoT.NewConnection("123", "abcd", "test", "1.0");
+            UoT.NewConnection("456", "abcd", "test", "1.0");
             UoT.CloseConnection("123");
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
@@ -360,7 +360,7 @@ namespace MiddlewareTests
         {
             var UoT = new MessageStats("test", 10);
             var source = new TestEndpoint("123");
-            UoT.OpenConnection(source.Id, "abcd");
+            UoT.NewConnection(source.Id, "abcd", "test", "1.0");
             var message = _createTestMessage("Channel1", source);
             message.Payload.Type = MessageType.UPDATE;
             UoT.UpdateChannelStats(message.Payload);

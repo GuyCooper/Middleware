@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Net.WebSockets;
 using System.IO;
@@ -11,7 +12,6 @@ namespace MiddlewareNetClient
     public interface ISession
     {
         void SendMessage(string message);
-        void StartDispatcher();
     }
 
     class WebSocketSession : ISession, IDisposable
@@ -19,14 +19,16 @@ namespace MiddlewareNetClient
         private ClientWebSocket _ws;
         private Uri _uri;
         private IMiddlewareManager _manager;
+        private AutoResetEvent _connectEvent;
 
         public WebSocketSession(IMiddlewareManager manager, string url)
         {
             _uri = new Uri(url);
             _manager = manager;
+            _connectEvent = new AutoResetEvent(false);
         }
 
-        private async void Connect()
+        public async Task Connect()
         {
             if (_ws == null)
             {
@@ -37,6 +39,7 @@ namespace MiddlewareNetClient
 
                 await _ws.ConnectAsync(_uri, System.Threading.CancellationToken.None).ContinueWith(async (t) =>
                 {
+                    _connectEvent.Set();
                     while (_ws.State == WebSocketState.Open)
                     {
                         string data = await _readDatafromSocket(_ws);
@@ -60,11 +63,6 @@ namespace MiddlewareNetClient
 
         public async void SendMessage(string message)
         {
-            if(_ws == null)
-            {
-                throw new ApplicationException("must call StartDispatcher berfore sending data");
-            }
-
             if(_ws.State == WebSocketState.Open)
             {
                 ArraySegment<byte> bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
@@ -92,11 +90,6 @@ namespace MiddlewareNetClient
                 using (var reader = new StreamReader(ms, Encoding.UTF8))
                     return reader.ReadToEnd();
             }
-        }
-
-        public void StartDispatcher()
-        {
-            Connect();
         }
     }
 }

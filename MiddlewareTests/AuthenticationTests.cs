@@ -32,7 +32,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication("admin", "password");
             todo.ContinueWith((result) =>
            {
-               Assert.IsTrue(true);
+               Assert.IsTrue(result.Result);
            });
         }
 
@@ -43,7 +43,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication("admin", "baddy");
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(false);
+                Assert.IsTrue(result.Result);
             });
 
         }
@@ -57,7 +57,7 @@ namespace MiddlewareTests
                                                         TestAuthenticationHandler.TestPassword);
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(true);
+                Assert.IsTrue(result.Result);
             });
 
         }
@@ -70,7 +70,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication("bah", "humbug");
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(false);
+                Assert.IsTrue(result.Result);
             });
         }
     }

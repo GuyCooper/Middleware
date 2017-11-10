@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MiddlewareNetClient;
 using Newtonsoft.Json;
 using Middleware;
+using System.Threading;
 
 namespace MIddlewareNetClientTest
 {
@@ -65,10 +66,8 @@ namespace MIddlewareNetClientTest
         {
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, null, null);
-            bool success = manager.SubscribeToChannel(session, prms);
-            Assert.IsTrue(success);
-
+            var response = manager.SubscribeToChannel(session, TestChannel);
+            Assert.IsNotNull(response);
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             Assert.AreEqual(result.Channel, TestChannel);
             Assert.AreEqual(result.Command, "SUBSCRIBETOCHANNEL");
@@ -77,107 +76,90 @@ namespace MIddlewareNetClientTest
         [TestMethod]
         public void when_subscribing_to_a_channel_with_success()
         {
-            var callbackresult = false;
+            var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = true; }, (s, d) => { callbackresult = false; });
-            bool success = manager.SubscribeToChannel(session, prms);
-            Assert.IsTrue(success);
-
+            manager.SubscribeToChannel(session, TestChannel).ContinueWith(t =>
+           {
+               Assert.IsTrue(t.Result.Success);
+               Assert.AreEqual(t.Result.Payload, TestPayload);
+               evt.Set();
+           });
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             result.Type = MessageType.RESPONSE_SUCCESS;
+            result.Payload = TestPayload;
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
+            Assert.IsTrue(evt.WaitOne(5000));
         }
 
         [TestMethod]
         public void when_subscribing_to_a_channel_with_failure()
         {
-            var callbackresult = false;
+            var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = false; }, (s, d) => { callbackresult = true; });
-            bool success = manager.SubscribeToChannel(session, prms);
-            Assert.IsTrue(success);
-
+            manager.SubscribeToChannel(session, TestChannel).ContinueWith(t =>
+           {
+               Assert.IsFalse(t.Result.Success);
+               evt.Set();
+           });
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             result.Type = MessageType.RESPONSE_ERROR;
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
+            Assert.IsTrue(evt.WaitOne(5000));
         }
 
         [TestMethod]
         public void when_Adding_listener_to_a_channel_with_success()
         {
-            var callbackresult = false;
+            var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = true; }, (s, d) => { callbackresult = false; });
-            bool success = manager.AddChannelListener(session, prms);
-            Assert.IsTrue(success);
-
+            manager.AddChannelListener(session, TestChannel).ContinueWith(t =>
+           {
+               Assert.IsTrue(t.Result.Success);
+               Assert.AreEqual(t.Result.Payload, TestPayload);
+               evt.Set();
+           });
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             Assert.AreEqual("ADDLISTENER", result.Command);
             result.Type = MessageType.RESPONSE_SUCCESS;
+            result.Payload = TestPayload;
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
+            Assert.IsTrue(evt.WaitOne(5000));
         }
-
 
         [TestMethod]
         public void when_Adding_listener_to_a_channel_with_failure()
         {
-            var callbackresult = false;
+            var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = false; }, (s, d) => { callbackresult = true; });
-            bool success = manager.AddChannelListener(session, prms);
-            Assert.IsTrue(success);
-
+            manager.AddChannelListener(session, TestChannel).ContinueWith(t =>
+            {
+                Assert.IsFalse(t.Result.Success);
+                evt.Set();
+            });
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             Assert.AreEqual("ADDLISTENER", result.Command);
             result.Type = MessageType.RESPONSE_ERROR;
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
+            Assert.IsTrue(evt.WaitOne(5000));
         }
 
 
         [TestMethod]
         public void when_sending_message_to_a_channel_with_success()
         {
-            var callbackresult = false;
+            var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = true; }, (s, d) => { callbackresult = false; });
-            bool success = manager.SendMessageToChannel(session, prms, TestPayload, TestDestination);
-            Assert.IsTrue(success);
+            manager.SendMessageToChannel(session, TestChannel, TestPayload, TestDestination);
 
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             Assert.AreEqual("SENDMESSAGE", result.Command);
             Assert.AreEqual(TestPayload, result.Payload);
             Assert.AreEqual(TestDestination, result.DestinationId);
-            result.Type = MessageType.RESPONSE_SUCCESS;
-            manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
-        }
-
-        [TestMethod]
-        public void when_sending_message_to_a_channel_with_failure()
-        {
-            var callbackresult = false;
-            var session = new TestSession();
-            var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, (s, d) => { callbackresult = false; }, (s, d) => { callbackresult = true; });
-            bool success = manager.SendMessageToChannel(session, prms, TestPayload, TestDestination);
-            Assert.IsTrue(success);
-
-            var result = JsonConvert.DeserializeObject<Message>(session.Message);
-            Assert.AreEqual("SENDMESSAGE", result.Command);
-            Assert.AreEqual(TestPayload, result.Payload);
-            Assert.AreEqual(TestDestination, result.DestinationId);
-            result.Type = MessageType.RESPONSE_ERROR;
-            manager.OnMessageCallback(session, JsonConvert.SerializeObject(result));
-            Assert.IsTrue(callbackresult);
         }
 
         [TestMethod]
@@ -185,11 +167,10 @@ namespace MIddlewareNetClientTest
         {
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            var prms = new MiddlewareRequestParams(TestChannel, null, null);
             bool error = false;
             try
             {
-                bool success = manager.SendMessageToChannel(session, prms, TestPayload, null);
+                manager.SendMessageToChannel(session, TestChannel, TestPayload, null);
             }
             catch (ArgumentException)
             {
@@ -209,7 +190,6 @@ namespace MIddlewareNetClientTest
                 Assert.AreEqual(TestPayload, m.Payload);
             });
 
-            var prms = new MiddlewareRequestParams(TestChannel, null, null);
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(TestSendMessage));
         }
 
@@ -224,7 +204,6 @@ namespace MIddlewareNetClientTest
                 Assert.AreEqual(TestPayload, m.Payload);
             });
 
-            var prms = new MiddlewareRequestParams(TestChannel, null, null);
             manager.OnMessageCallback(session, JsonConvert.SerializeObject(TestPublishMessage));
         }
     }
