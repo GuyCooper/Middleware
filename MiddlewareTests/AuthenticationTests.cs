@@ -13,11 +13,14 @@ namespace MiddlewareTests
         public static readonly string TestUser = "bob";
         public static readonly string TestPassword = "piddy";
 
-        protected override Task<bool> AuthenticateUser(string username, string password)
+        protected override Task<AuthResult> AuthenticateUser(LoginPayload login)
         {
            return Task.Factory.StartNew(() =>
            {
-               return username == TestUser && password == TestPassword;
+               return new AuthResult
+               {
+                   Success = login.UserName == TestUser && login.Password == TestPassword
+               };
            });
         }
     }
@@ -29,10 +32,11 @@ namespace MiddlewareTests
         public void When_using_default_authentication_success()
         {
             var UoT = new DefaultAuthenticationHandler();
-            var todo = UoT.HandleClientAuthentication("admin", "password");
+            var login = new LoginPayload { UserName = "admin", Password = "password" };
+            var todo = UoT.HandleClientAuthentication(login);
             todo.ContinueWith((result) =>
            {
-               Assert.IsTrue(result.Result);
+               Assert.IsTrue(result.Result.Success);
            });
         }
 
@@ -40,10 +44,11 @@ namespace MiddlewareTests
         public void When_using_default_authentication_fail()
         {
             var UoT = new DefaultAuthenticationHandler();
-            var todo = UoT.HandleClientAuthentication("admin", "baddy");
+            var login = new LoginPayload { UserName = "admin", Password = "baddy" };
+            var todo = UoT.HandleClientAuthentication(login);
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(result.Result);
+                Assert.IsFalse(result.Result.Success);
             });
 
         }
@@ -53,11 +58,16 @@ namespace MiddlewareTests
         {
             var UoT = new DefaultAuthenticationHandler();
             UoT.AddHandler(new TestAuthenticationHandler());
-            var todo = UoT.HandleClientAuthentication(TestAuthenticationHandler.TestUser,
-                                                        TestAuthenticationHandler.TestPassword);
+            var login = new LoginPayload
+            {
+                UserName = TestAuthenticationHandler.TestUser,
+                Password = TestAuthenticationHandler.TestPassword
+            };
+
+            var todo = UoT.HandleClientAuthentication(login);
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(result.Result);
+                Assert.IsTrue(result.Result.Success);
             });
 
         }
@@ -67,10 +77,13 @@ namespace MiddlewareTests
         {
             var UoT = new DefaultAuthenticationHandler();
             UoT.AddHandler(new TestAuthenticationHandler());
-            var todo = UoT.HandleClientAuthentication("bah", "humbug");
+
+            var login = new LoginPayload { UserName = "bah", Password = "humbug" };
+
+            var todo = UoT.HandleClientAuthentication(login);
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(result.Result);
+                Assert.IsFalse(result.Result.Success);
             });
         }
     }

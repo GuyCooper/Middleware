@@ -48,8 +48,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthenitcationHandler.cs" />
+    <Compile Include="AuthRequestCache.cs" />
+    <Compile Include="AuthRequestHandler.cs" />
     <Compile Include="Channels.cs" />
+    <Compile Include="ConfigParser.cs" />
     <Compile Include="Endpoint.cs" />
+    <Compile Include="ExternalAuthenticationHandler.cs" />
     <Compile Include="Handlers.cs" />
     <Compile Include="LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="MessageStats.cs" />

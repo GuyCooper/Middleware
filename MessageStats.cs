@@ -55,8 +55,8 @@ namespace Middleware
     interface IMessageStats
     {
         void UpdateChannelStats(Message message);
-        void NewConnection(string id, string source, string appName, string version);
-        void CloseConnection(string id);
+        void NewConnection(string id, string source, string appName, string version, bool isAuth);
+        void CloseConnection(string id, bool isAuth);
         IEnumerable<ChannelStats> GetChannelsStats();
         string ToXML();
     }
@@ -111,7 +111,7 @@ namespace Middleware
             }
         }
 
-        public void NewConnection(string id, string source, string appName, string version)
+        public void NewConnection(string id, string source, string appName, string version, bool isAuth)
         {
             if (_connections.Find(x => x.Id == id) == null)
             {
@@ -126,7 +126,7 @@ namespace Middleware
             }
         }
 
-        public void CloseConnection(string id)
+        public void CloseConnection(string id, bool isAuth)
         {
             _currentConnections--;
             var connection = _connections.Find(x => x.Id == id);

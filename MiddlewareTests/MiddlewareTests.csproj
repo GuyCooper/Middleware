@@ -64,6 +64,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="AuthenticationCacheTests.cs" />
     <Compile Include="AuthenticationTests.cs" />
     <Compile Include="ChannelTests.cs" />
     <Compile Include="EndpointTests.cs" />

@@ -59,11 +59,11 @@ namespace Middleware
     {
         //private Dictionary<string, Endpoint> _endpointLookup = new Dictionary<string, Endpoint>();
         private Dictionary<WebsocketConnection, IEndpoint> _endpoints = new Dictionary<WebsocketConnection, IEndpoint>();
-        private IHandler _handler;
-        private IAuthenitcationHandler _authHandler;
-        private IMessageStats _stats;
+        private IMessageHandler _handler;
+        private IAuthenticationHandler _authHandler;
+        protected IMessageStats _stats;
 
-        public EndpointManager(IHandler handler, IAuthenitcationHandler authHandler, IMessageStats stats)
+        public EndpointManager(IMessageHandler handler, IAuthenticationHandler authHandler, IMessageStats stats)
         {
             _handler = handler;
             _authHandler = authHandler;
@@ -93,7 +93,7 @@ namespace Middleware
                 var endpoint = _endpoints[connection];
                 endpoint.EndpointClosed();
                 _endpoints.Remove(connection);
-                _stats.CloseConnection(endpoint.Id);
+                LogCloseConnection(endpoint);
             }
         }
 
@@ -107,9 +107,10 @@ namespace Middleware
                 {
                     endpoint.AuthenticateEndpoint(data).ContinueWith(t =>
                    {
-                       var response = t.Result;
-                       Console.WriteLine(response.Message);
-                       if (response.Success == false)
+                       AuthResponse response = t.Result;
+                       AuthResult authResult = response.Result;
+                       Console.WriteLine(authResult.Message);
+                       if (authResult.Success == false)
                        {
                            //authentication failed,
                            Console.WriteLine("removing endpoint");
@@ -118,10 +119,7 @@ namespace Middleware
                        else
                        {
                            var payload = response.Payload;
-                           _stats.NewConnection(endpoint.Id, 
-                                                payload.Source,
-                                                payload.AppName,
-                                                payload.Version);
+                           LogNewConnection(endpoint, payload);
                        }
                    });
                 }
@@ -131,6 +129,20 @@ namespace Middleware
                 }
             }
         }
+
+        protected virtual void LogNewConnection(IEndpoint endpoint, LoginPayload payload)
+        {
+            _stats.NewConnection(endpoint.Id,
+                                payload.Source,
+                                payload.AppName,
+                                payload.Version, false);
+        }
+
+        protected virtual void LogCloseConnection(IEndpoint endpoint)
+        {
+            _stats.CloseConnection(endpoint.Id, false);
+        }
+
     }
 
     /// <summary>
@@ -344,21 +356,23 @@ namespace Middleware
     /// <summary>
     /// class handles authentication clients for the server
     /// </summary>
-    class AuthenticationManager : ISocketManager
+    class AuthenticationManager : EndpointManager
     {
-        public void CloseConnection(WebSocket socket)
+        public AuthenticationManager(IMessageHandler handler, IAuthenticationHandler authHandler, IMessageStats stats) : base(handler, authHandler, stats)
         {
-            throw new NotImplementedException();
         }
 
-        public void DataRecevied(WebSocket socket, string data)
+        protected override void LogNewConnection(IEndpoint endpoint, LoginPayload payload)
         {
-            throw new NotImplementedException();
+            _stats.NewConnection(endpoint.Id,
+                                payload.Source,
+                                payload.AppName,
+                                payload.Version, true);
         }
 
-        public void NewConnection(WebSocket socket, string origin)
+        protected override void LogCloseConnection(IEndpoint endpoint)
         {
-            throw new NotImplementedException();
+            _stats.CloseConnection(endpoint.Id, true);
         }
     }
 }

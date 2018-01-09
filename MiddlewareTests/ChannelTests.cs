@@ -333,8 +333,8 @@ namespace MiddlewareTests
         public void TestStatsOpenConnection()
         {
             var UoT = new MessageStats("test", 10);
-            UoT.NewConnection("123", "abcd", "test", "1.0");
-            UoT.NewConnection("456", "abcd", "test", "1.1");
+            UoT.NewConnection("123", "abcd", "test", "1.0", false);
+            UoT.NewConnection("456", "abcd", "test", "1.1", false);
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(2, result.Connections.Length);
@@ -345,9 +345,9 @@ namespace MiddlewareTests
         public void TestStatsCloseConnection()
         {
             var UoT = new MessageStats("test", 10);
-            UoT.NewConnection("123", "abcd", "test", "1.0");
-            UoT.NewConnection("456", "abcd", "test", "1.0");
-            UoT.CloseConnection("123");
+            UoT.NewConnection("123", "abcd", "test", "1.0", false);
+            UoT.NewConnection("456", "abcd", "test", "1.0", false);
+            UoT.CloseConnection("123", false);
             var result = DeserialisedResults(UoT.ToXML());
             Assert.IsNotNull(result);
             Assert.AreEqual(1, result.Connections.Length);
@@ -360,7 +360,7 @@ namespace MiddlewareTests
         {
             var UoT = new MessageStats("test", 10);
             var source = new TestEndpoint("123");
-            UoT.NewConnection(source.Id, "abcd", "test", "1.0");
+            UoT.NewConnection(source.Id, "abcd", "test", "1.0", true);
             var message = _createTestMessage("Channel1", source);
             message.Payload.Type = MessageType.UPDATE;
             UoT.UpdateChannelStats(message.Payload);

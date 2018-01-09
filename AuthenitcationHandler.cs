@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Middleware
 {
@@ -10,36 +11,36 @@ namespace Middleware
     /// Authentication handler interface. authenticates a user, returns true for
     /// pass, false for fail. simple..
     /// </summary>
-    interface IAuthenitcationHandler
+    interface IAuthenticationHandler
     {
-        Task<bool> HandleClientAuthentication(string username, string password);
-        void AddHandler(IAuthenitcationHandler handler);
+        Task<AuthResult> HandleClientAuthentication(LoginPayload login );
+        void AddHandler(IAuthenticationHandler handler);
     }
 
     /// <summary>
     /// Authrntication handler base class implements chaining of handlers. will
     /// itertate through all handlers until pass.
     /// </summary>
-    abstract class AuthenticationHandler : IAuthenitcationHandler
+    abstract class AuthenticationHandler : IAuthenticationHandler
     {
-        private IAuthenitcationHandler _Next;
+        private IAuthenticationHandler _Next;
 
-        protected abstract Task<bool> AuthenticateUser(string username, string password);
+        protected abstract Task<AuthResult> AuthenticateUser(LoginPayload login);
 
-        public async Task<bool> HandleClientAuthentication(string username, string password)
+        public async Task<AuthResult> HandleClientAuthentication(LoginPayload login)
         {
-            var result = await AuthenticateUser(username, password);
-            if(result == false)
+            var result = await AuthenticateUser(login);
+            if(result.Success == false)
             {
                 if (_Next != null)
                 {
-                    result = await AuthenticateUser(username, password);
+                    result = await AuthenticateUser(login);
                 }
             }
             return result;
         }
 
-        public void AddHandler(IAuthenitcationHandler handler)
+        public void AddHandler(IAuthenticationHandler handler)
         {
             _Next = handler;
         }
@@ -50,23 +51,23 @@ namespace Middleware
     /// </summary>
     class DefaultAuthenticationHandler : AuthenticationHandler
     {
-        protected override Task<bool> AuthenticateUser(string username, string password)
+        protected override Task<AuthResult> AuthenticateUser(LoginPayload login)
         {
             return Task.Factory.StartNew(() =>
            {
-               return username == "admin" && password == "password";
+               var result = new AuthResult();
+               if(login.UserName == "admin" && login.Password == "password")
+               {
+                   result.Success = true;
+                   result.Message = "Autheitcation Passed";
+               }
+               else
+               {
+                   result.Success = false;
+                   result.Message = "Autheitcation Failed";
+               }
+               return result;
            });
         }
-    }
-
-    /// <summary>
-    /// use external authentication module to authenticate
-    /// </summary>
-    class ExternalAuthenticationHandler : AuthenticationHandler
-    {
-        protected override Task<bool> AuthenticateUser(string username, string password)
-        {
-            throw new NotImplementedException();
-        }
-    }
+    }   
 }

@@ -55,7 +55,7 @@ namespace MiddlewareTests
     public class HandlerTests
     {
         private TestChannel _testChannel;
-        private IHandler _testhandler;
+        private IMessageHandler _testhandler;
 
         [TestInitialize]
         public void Setup()

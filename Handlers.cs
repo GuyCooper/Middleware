@@ -6,36 +6,39 @@ using System.Threading.Tasks;
 
 namespace Middleware
 {
-    interface IHandler
+    interface IMessageHandler
     {
         bool ProcessMessage(MiddlewareMessage message);
-        void AddHandler(IHandler handler);
+        void AddHandler(IMessageHandler handler);
         void RemoveEndpoint(string id);
-        IHandler GetNext();
+        IMessageHandler GetNext();
     }
 
-    abstract class CommandHandler : IHandler
+    /// <summary>
+    /// abstract base class for chaining command handlers. message passes through
+    /// each handler in chain until it is handled
+    /// </summary>
+    abstract class CommandHandler : IMessageHandler
     {
-        private IHandler _Next = null;
-        protected string _Name;
-        protected IChannel _channel;
+        private IMessageHandler _Next = null;
+        private string _Name;
 
-        public CommandHandler(IChannel channel)
+        public CommandHandler(string name)
         {
-            _channel = channel;
+            _Name = name;
         }
 
         protected abstract void HandleMessageInternal(MiddlewareMessage message);
 
         public bool ProcessMessage(MiddlewareMessage message)
         {
-            if(message == null || message.Payload == null)
+            if (message == null || message.Payload == null)
             {
                 return false;
             }
 
             var payload = message.Payload;
-            if(payload.Command == null)
+            if (payload.Command == null)
             {
                 return false;
             }
@@ -48,16 +51,12 @@ namespace Middleware
                 return true;
             }
 
-            if (_Next != null)
-            {
-                return _Next.ProcessMessage(message);
-            }
-            return false;
+            return ProcessNextHandler(message);
         }
 
-        public void AddHandler(IHandler handler)
+        public void AddHandler(IMessageHandler handler)
         {
-            IHandler nextAvailable = _Next;
+            IMessageHandler nextAvailable = _Next;
             if(nextAvailable == null)
             {
                 _Next = handler;
@@ -74,25 +73,49 @@ namespace Middleware
             }
         }
 
-        public IHandler GetNext()
+        public IMessageHandler GetNext()
         {
             return _Next;
         }
-        public void RemoveEndpoint(string id)
+
+        protected bool ProcessNextHandler(MiddlewareMessage message)
         {
-            _channel.RemoveEndpoint(id);
+            if (_Next != null)
+            {
+                return _Next.ProcessMessage(message);
+            }
+            return false;
         }
+
+        public abstract void RemoveEndpoint(string id);
     }
 
     /// <summary>
+    /// abstract base class for handlers with channels
+    /// </summary>
+    abstract class ChannelCommandHandler : CommandHandler
+    {
+        protected IChannel _channel;
+
+        public ChannelCommandHandler(string name, IChannel channel) : base(name)
+        {
+            _channel = channel;
+        }
+
+        public override void RemoveEndpoint(string id)
+        {
+            _channel.RemoveEndpoint(id);
+        }
+
+    }
+    /// <summary>
     /// add a subscriber to a channel
     /// </summary>
-    class SubscribeToChannelHandler : CommandHandler
+    class SubscribeToChannelHandler : ChannelCommandHandler
     {
         public SubscribeToChannelHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.SUBSCRIBETOCHANNEL, channel)
         {
-            _Name = HandlerNames.SUBSCRIBETOCHANNEL;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)
@@ -105,12 +128,11 @@ namespace Middleware
     /// <summary>
     /// remove a subscriber froma channel
     /// </summary>
-    class RemoveSubscriptionHandler : CommandHandler
+    class RemoveSubscriptionHandler : ChannelCommandHandler
     {
         public RemoveSubscriptionHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.REMOVESUBSCRIPTION, channel)
         {
-            _Name = HandlerNames.REMOVESUBSCRIPTION;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)
@@ -123,12 +145,11 @@ namespace Middleware
     /// <summary>
     /// send a message to a specified endpoint on the specified channel
     /// </summary>
-    class SendMessageHandler : CommandHandler
+    class SendMessageHandler : ChannelCommandHandler
     {
         public SendMessageHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.SENDMESSAGE, channel)
         {
-            _Name = HandlerNames.SENDMESSAGE;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)
@@ -141,12 +162,11 @@ namespace Middleware
     /// <summary>
     /// add an endpoint to uniquely handle all requests on a channel
     /// </summary>
-    class AddListenerHandler : CommandHandler
+    class AddListenerHandler : ChannelCommandHandler
     {
         public AddListenerHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.ADDLISTENER, channel)
         {
-            _Name = HandlerNames.ADDLISTENER;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)
@@ -160,12 +180,11 @@ namespace Middleware
     /// send a request to a channel. will only be handled if the channel
     /// has a primary request handler
     /// </summary>
-    class SendRequestHandler : CommandHandler
+    class SendRequestHandler : ChannelCommandHandler
     {
         public SendRequestHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.SENDREQUEST, channel)
         {
-            _Name = HandlerNames.SENDREQUEST;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)
@@ -175,12 +194,11 @@ namespace Middleware
         }
     }
 
-    class PublishMessageHandler : CommandHandler
+    class PublishMessageHandler : ChannelCommandHandler
     {
         public PublishMessageHandler(IChannel channel) :
-            base(channel)
+            base(HandlerNames.PUBLISHMESSAGE, channel)
         {
-            _Name = HandlerNames.PUBLISHMESSAGE;
         }
 
         protected override void HandleMessageInternal(MiddlewareMessage message)

@@ -22,11 +22,11 @@ namespace MiddlewareTests
         }
     }
 
-    internal class TestHandler : IHandler
+    internal class TestHandler : IMessageHandler
     {
         public List<MiddlewareMessage> Messages = new List<MiddlewareMessage>();
-        public void AddHandler(IHandler handler) { }
-        public IHandler GetNext() { return null; }
+        public void AddHandler(IMessageHandler handler) { }
+        public IMessageHandler GetNext() { return null; }
         public bool ProcessMessage(MiddlewareMessage message)
         {
             Messages.Add(message);
@@ -105,7 +105,9 @@ namespace MiddlewareTests
 
             endpoint.AuthenticateEndpoint(payload).ContinueWith(t =>
            {
-               Assert.IsTrue(t.Result.Success);
+               AuthResponse response = t.Result;
+               AuthResult result = response.Result;
+               Assert.IsTrue(result.Success);
                Assert.IsTrue(endpoint.Authenticated);
            });
         }

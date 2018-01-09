@@ -24,6 +24,7 @@ namespace Middleware
         public static readonly string SENDREQUEST = "SENDREQUEST";
         public static readonly string PUBLISHMESSAGE = "PUBLISHMESSAGE";
         public static readonly string LOGIN = "DOLOGIN";
+        public static readonly string REGISTER_AUTH = "REGISTER_AUTH";
     }
 
     public enum MessageType
@@ -52,5 +53,11 @@ namespace Middleware
         public string Version { get; set; }
         public string AppName { get; set; }
         public string Source { get; set; }
+    }
+
+    public class AuthResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
     }
 }

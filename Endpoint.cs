@@ -17,15 +17,24 @@ namespace Middleware
 
     internal class AuthResponse
     {
-        public AuthResponse(bool success, string message, LoginPayload payload)
+        public AuthResponse(AuthResult result, LoginPayload payload)
         {
-            Success = success;
+            Result = result;
             Payload = payload;
-            Message = message;
         }
 
-        public bool Success { get; private set; }
-        public string Message { get; private set; }
+        public AuthResponse(bool success, string message, LoginPayload payload)
+        {
+            Result = new AuthResult
+            {
+                Success = success,
+                Message = message
+            };
+
+            Payload = payload;
+        }
+
+        public AuthResult Result { get; private set; }
         public LoginPayload Payload { get; set; }
     }
     /// <summary>
@@ -65,14 +74,14 @@ namespace Middleware
     class MiddlewareEndpoint : IEndpoint
     {
         private IConnection _connection; //underlying socket transport
-        private IHandler _handler;
-        private IAuthenitcationHandler _authHandler;
+        private IMessageHandler _handler;
+        private IAuthenticationHandler _authHandler;
 
         public string Id { get; private set; }
 
         public bool Authenticated { get; private set; }
 
-        public MiddlewareEndpoint(IConnection connection, IHandler handler, IAuthenitcationHandler authHandler)
+        public MiddlewareEndpoint(IConnection connection, IMessageHandler handler, IAuthenticationHandler authHandler)
         {
             Id = Guid.NewGuid().ToString();
             _connection = connection;
@@ -103,22 +112,19 @@ namespace Middleware
 
             LoginPayload login = JsonConvert.DeserializeObject<LoginPayload>(message.Payload);
 
-            var result = await _authHandler.HandleClientAuthentication(login.UserName, login.Password);
-            string responseString;    
-            if (result == true)
+            var result = await _authHandler.HandleClientAuthentication(login);
+            Authenticated = result.Success;
+            message.Payload = result.Message;
+            if (Authenticated == true)
             {
-                responseString = "authentication succeded";
-                message.Payload = responseString;
                 OnSucess(message);
-                Authenticated = true;
             }
             else
             {
-                responseString = "authentication failed";
-                OnError(message, responseString);
+                OnError(message, "authentication failed");
             }
 
-            return new AuthResponse(result, responseString, login);
+            return new AuthResponse(result, login);
         }
 
         public void DataReceived(string data)
