@@ -71,7 +71,25 @@ namespace MiddlewareNetClient
             return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "");
         }
 
-	    public void PublishMessage(ISession session, string channel, string payload)
+        public Task<SendDataResponse> RegisterAuthHandler(ISession session, string payload)
+        {
+            return _RequestImp(session, "", HandlerNames.REGISTER_AUTH, payload, "");
+        }
+
+        public void SendAuthenticationResponse(ISession session, string responseID, AuthResult result)
+        {
+            var message = new Message
+            {
+                Command = HandlerNames.LOGIN,
+                Type = MessageType.REQUEST,
+                RequestId = responseID,
+                Payload = JsonConvert.SerializeObject(result)
+            };
+
+            _SendMessageImpl(session, message);
+        }
+
+        public void PublishMessage(ISession session, string channel, string payload)
         {
             _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "");
         }

@@ -34,7 +34,7 @@ namespace Middleware
             {
                 if (_Next != null)
                 {
-                    result = await AuthenticateUser(login);
+                    result = await _Next.HandleClientAuthentication(login);
                 }
             }
             return result;

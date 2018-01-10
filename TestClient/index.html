@@ -46,7 +46,7 @@
         };
 
         connectToServer = function () {
-            mw.Connect("ws://localhost:8080", "admin", "password",  onConnected, onError, onMessage);
+            mw.Connect("ws://localhost:8080", "webclient", "webby",  onConnected, onError, onMessage);
         };
 
         addSubscriber = function () {

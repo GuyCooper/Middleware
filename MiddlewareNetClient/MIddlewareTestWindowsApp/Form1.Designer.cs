@@ -58,8 +58,16 @@
             this.label8 = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
             this.lstMessages = new System.Windows.Forms.ListBox();
+            this.panel3 = new System.Windows.Forms.Panel();
+            this.txtAuthServerURL = new System.Windows.Forms.TextBox();
+            this.btnDeny = new System.Windows.Forms.Button();
+            this.btnAllow = new System.Windows.Forms.Button();
+            this.lstTextAuthRequests = new System.Windows.Forms.ListBox();
+            this.btnRegisterAuth = new System.Windows.Forms.Button();
+            this.label13 = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
+            this.panel3.SuspendLayout();
             this.SuspendLayout();
             // 
             // label1
@@ -338,16 +346,88 @@
             // 
             this.lstMessages.FormattingEnabled = true;
             this.lstMessages.ItemHeight = 20;
-            this.lstMessages.Location = new System.Drawing.Point(53, 650);
+            this.lstMessages.Location = new System.Drawing.Point(48, 889);
             this.lstMessages.Name = "lstMessages";
             this.lstMessages.Size = new System.Drawing.Size(631, 84);
             this.lstMessages.TabIndex = 7;
+            // 
+            // panel3
+            // 
+            this.panel3.Controls.Add(this.txtAuthServerURL);
+            this.panel3.Controls.Add(this.btnDeny);
+            this.panel3.Controls.Add(this.btnAllow);
+            this.panel3.Controls.Add(this.lstTextAuthRequests);
+            this.panel3.Controls.Add(this.btnRegisterAuth);
+            this.panel3.Controls.Add(this.label13);
+            this.panel3.Location = new System.Drawing.Point(48, 674);
+            this.panel3.Name = "panel3";
+            this.panel3.Size = new System.Drawing.Size(636, 186);
+            this.panel3.TabIndex = 8;
+            // 
+            // txtAuthServerURL
+            // 
+            this.txtAuthServerURL.Location = new System.Drawing.Point(115, 19);
+            this.txtAuthServerURL.Name = "txtAuthServerURL";
+            this.txtAuthServerURL.Size = new System.Drawing.Size(343, 26);
+            this.txtAuthServerURL.TabIndex = 5;
+            this.txtAuthServerURL.Text = "ws://localhost:9092";
+            // 
+            // btnDeny
+            // 
+            this.btnDeny.Enabled = false;
+            this.btnDeny.Location = new System.Drawing.Point(502, 121);
+            this.btnDeny.Name = "btnDeny";
+            this.btnDeny.Size = new System.Drawing.Size(115, 36);
+            this.btnDeny.TabIndex = 4;
+            this.btnDeny.Text = "Deny";
+            this.btnDeny.UseVisualStyleBackColor = true;
+            this.btnDeny.Click += new System.EventHandler(this.btnDeny_Click);
+            // 
+            // btnAllow
+            // 
+            this.btnAllow.Enabled = false;
+            this.btnAllow.Location = new System.Drawing.Point(502, 73);
+            this.btnAllow.Name = "btnAllow";
+            this.btnAllow.Size = new System.Drawing.Size(115, 36);
+            this.btnAllow.TabIndex = 3;
+            this.btnAllow.Text = "Allow";
+            this.btnAllow.UseVisualStyleBackColor = true;
+            this.btnAllow.Click += new System.EventHandler(this.btnAllow_Click);
+            // 
+            // lstTextAuthRequests
+            // 
+            this.lstTextAuthRequests.FormattingEnabled = true;
+            this.lstTextAuthRequests.ItemHeight = 20;
+            this.lstTextAuthRequests.Location = new System.Drawing.Point(17, 73);
+            this.lstTextAuthRequests.Name = "lstTextAuthRequests";
+            this.lstTextAuthRequests.Size = new System.Drawing.Size(441, 84);
+            this.lstTextAuthRequests.TabIndex = 2;
+            // 
+            // btnRegisterAuth
+            // 
+            this.btnRegisterAuth.Location = new System.Drawing.Point(502, 14);
+            this.btnRegisterAuth.Name = "btnRegisterAuth";
+            this.btnRegisterAuth.Size = new System.Drawing.Size(115, 36);
+            this.btnRegisterAuth.TabIndex = 1;
+            this.btnRegisterAuth.Text = "Register Auth";
+            this.btnRegisterAuth.UseVisualStyleBackColor = true;
+            this.btnRegisterAuth.Click += new System.EventHandler(this.btnRegisterAuth_Click);
+            // 
+            // label13
+            // 
+            this.label13.AutoSize = true;
+            this.label13.Location = new System.Drawing.Point(13, 22);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(93, 20);
+            this.label13.TabIndex = 0;
+            this.label13.Text = "Auth Server";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(721, 772);
+            this.ClientSize = new System.Drawing.Size(704, 987);
+            this.Controls.Add(this.panel3);
             this.Controls.Add(this.lstMessages);
             this.Controls.Add(this.label12);
             this.Controls.Add(this.panel2);
@@ -362,6 +442,8 @@
             this.panel1.PerformLayout();
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
+            this.panel3.ResumeLayout(false);
+            this.panel3.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -399,6 +481,13 @@
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.ListBox lstMessages;
+        private System.Windows.Forms.Panel panel3;
+        private System.Windows.Forms.Button btnRegisterAuth;
+        private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.Button btnAllow;
+        private System.Windows.Forms.ListBox lstTextAuthRequests;
+        private System.Windows.Forms.Button btnDeny;
+        private System.Windows.Forms.TextBox txtAuthServerURL;
     }
 }
 
