@@ -154,7 +154,7 @@ namespace MIddlewareNetClientTest
             var evt = new ManualResetEvent(false);
             var session = new TestSession();
             var manager = new MiddlewareManager();
-            manager.SendMessageToChannel(session, TestChannel, TestPayload, TestDestination);
+            manager.SendMessageToChannel(session, TestChannel, TestPayload, TestDestination, null);
 
             var result = JsonConvert.DeserializeObject<Message>(session.Message);
             Assert.AreEqual("SENDMESSAGE", result.Command);
@@ -170,7 +170,7 @@ namespace MIddlewareNetClientTest
             bool error = false;
             try
             {
-                manager.SendMessageToChannel(session, TestChannel, TestPayload, null);
+                manager.SendMessageToChannel(session, TestChannel, TestPayload, null, null);
             }
             catch (ArgumentException)
             {

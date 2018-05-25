@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
+﻿using System.Threading.Tasks;
 
 namespace Middleware
 {
@@ -13,28 +8,29 @@ namespace Middleware
     /// </summary>
     interface IAuthenticationHandler
     {
-        Task<AuthResult> HandleClientAuthentication(LoginPayload login );
+        Task<AuthResult> HandleClientAuthentication(LoginPayload login, string sourceId );
         void AddHandler(IAuthenticationHandler handler);
+        void EndpointClosed(string id);
     }
 
     /// <summary>
-    /// Authrntication handler base class implements chaining of handlers. will
+    /// Authentication handler base class implements chaining of handlers. will
     /// itertate through all handlers until pass.
     /// </summary>
     abstract class AuthenticationHandler : IAuthenticationHandler
     {
         private IAuthenticationHandler _Next;
 
-        protected abstract Task<AuthResult> AuthenticateUser(LoginPayload login);
+        protected abstract Task<AuthResult> AuthenticateUser(LoginPayload login, string sourceId);
 
-        public async Task<AuthResult> HandleClientAuthentication(LoginPayload login)
+        public async Task<AuthResult> HandleClientAuthentication(LoginPayload login, string sourceId)
         {
-            var result = await AuthenticateUser(login);
-            if(result.Success == false)
+            var result = await AuthenticateUser(login, sourceId);
+            if (result.Success == false)
             {
                 if (_Next != null)
                 {
-                    result = await _Next.HandleClientAuthentication(login);
+                    result = await _Next.HandleClientAuthentication(login, sourceId);
                 }
             }
             return result;
@@ -44,14 +40,25 @@ namespace Middleware
         {
             _Next = handler;
         }
-    }
 
+        //inform all authhandlers that this endpoint is closing
+        public void EndpointClosed(string id)
+        {
+            NotifyEndpointClosed(id);
+            if(_Next != null)
+            {
+                _Next.EndpointClosed(id);
+            }
+        }
+
+        protected virtual void NotifyEndpointClosed(string id) { }
+    }
     /// <summary>
     /// default authetication handler hardcoded user and password.
     /// </summary>
     class DefaultAuthenticationHandler : AuthenticationHandler
     {
-        protected override Task<AuthResult> AuthenticateUser(LoginPayload login)
+        protected override Task<AuthResult> AuthenticateUser(LoginPayload login, string sourceId)
         {
             return Task.Factory.StartNew(() =>
            {

@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Middleware;
 using MiddlewareNetClient;
@@ -19,14 +12,14 @@ namespace MIddlewareTestWindowsApp
         private ISession _session;
         private ISession _authSession;
         private System.Threading.SynchronizationContext _sc;
-        private MiddlewareAppLogger _logger;
         private string authRequestID;
 
+        private static Form1 _staticForm;
         public Form1()
         {
-            _sc = System.Threading.SynchronizationContext.Current;
             InitializeComponent();
-            _logger = new MiddlewareAppLogger(this);
+            _sc = System.Threading.SynchronizationContext.Current;
+            _staticForm = this;
         }
 
         private void HandlerServerMessages(ISession session, Middleware.Message message)
@@ -55,7 +48,7 @@ namespace MIddlewareTestWindowsApp
             var frmConnect = new FormConnect();
             if (frmConnect.ShowDialog() == DialogResult.OK)
             {
-                var session = await manager.CreateSession(url, frmConnect.GetUser(), frmConnect.GetPassword(), _logger); 
+                var session = await manager.CreateSession(url, frmConnect.GetUser(), frmConnect.GetPassword(),"Test Windows App"); 
                 if(session != null)
                 {
                     manager.RegisterMessageCallbackFunction(callback);
@@ -114,7 +107,7 @@ namespace MIddlewareTestWindowsApp
 
         private void btnSendResponse_Click(object sender, EventArgs e)
         {
-            _manager.SendMessageToChannel(_session, txtMsgChannelName.Text, txtSendResponse.Text, txtSourceId.Text);
+            _manager.SendMessageToChannel(_session, txtMsgChannelName.Text, txtSendResponse.Text, txtSourceId.Text, null);
         }
 
         private void btnSubscribe_Click(object sender, EventArgs e)
@@ -150,6 +143,11 @@ namespace MIddlewareTestWindowsApp
                lstMessages.Items.Add(msg);
            }
             , message);
+        }
+
+        public static void LogMethod(string level, string message)
+        {
+            _staticForm.LogMessage($"{level}: {message}");
         }
 
         private void HandleAuthRequests(ISession session, Middleware.Message message)
@@ -233,23 +231,4 @@ namespace MIddlewareTestWindowsApp
             ProcessAuthResult(false, "authentication failed");
         }
     }
-
-    internal class MiddlewareAppLogger : ILogger
-    {
-        private Form1 _form;
-        public MiddlewareAppLogger(Form1 form)
-        {
-            _form = form;
-        }
-        public void LogError(string error)
-        {
-            _form.LogMessage(string.Format("ERROR. {0}", error));
-        }
-
-        public void LogMessage(string message)
-        {
-            _form.LogMessage(string.Format("MESSAGE. {0}", message));
-        }
-    }
-
 }

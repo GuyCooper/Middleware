@@ -13,12 +13,9 @@ namespace MiddlewareTests
     {
         public List<string> DataList = new List<string>();
 
-        public Task SendData(string data)
+        public void SendData(string data)
         {
-            return Task.Factory.StartNew(() =>
-           {
-               DataList.Add(data);
-           });
+            DataList.Add(data);
         }
     }
 

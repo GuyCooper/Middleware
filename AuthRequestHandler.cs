@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
+using NLog;
 
 namespace Middleware
 {
@@ -13,6 +10,8 @@ namespace Middleware
     internal class AuthLoginResponseHandler : CommandHandler
     {
         private AuthRequestCache _authCache;
+
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public AuthLoginResponseHandler(AuthRequestCache authCache) : base(HandlerNames.LOGIN)
         {
@@ -25,7 +24,7 @@ namespace Middleware
             AuthResult authResult = msg.Payload != null ? JsonConvert.DeserializeObject<AuthResult>(msg.Payload) : null;
             if(_authCache.UpdateAuthResult(msg.RequestId, authResult) == false)
             {
-                Console.WriteLine("unknown login response message. request id: {0}", msg.RequestId);
+                logger.Log(LogLevel.Error, $"authentication failed. unknown login response message. request id: {msg.RequestId}");
             }
         }
 
@@ -41,6 +40,8 @@ namespace Middleware
     {
         private IAuthenticationHandler _authHandler;
         private AuthRequestCache _authCache;
+
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public AuthRegisterMessageHandler(IAuthenticationHandler authHandler, AuthRequestCache authCache) : base(HandlerNames.REGISTER_AUTH)
         {
@@ -59,7 +60,7 @@ namespace Middleware
             }
             else
             {
-                Console.WriteLine("invalid endpoint");
+                logger.Log(LogLevel.Error, "HandleMessageInternal: invalid endpoint");
             }
         }
 

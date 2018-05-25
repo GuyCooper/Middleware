@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using System.Threading;
-
+using NLog;
 using AuthResultEventPair = System.Tuple<System.Threading.ManualResetEvent, Middleware.AuthResult>;
 
 namespace Middleware
@@ -16,6 +12,8 @@ namespace Middleware
     {
         private Dictionary<string, AuthResultEventPair> _pendingAuthRequests;
         private int _authTimeout;
+
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public AuthRequestCache(int timeout)
         {
@@ -36,6 +34,7 @@ namespace Middleware
             if (_pendingAuthRequests.TryGetValue(requestId, out authEvent) == false)
             {
                 error = "invalid auth request id";
+                logger.Log(LogLevel.Error, $"authentication failed: {error}");
             }
             else
             {             
@@ -44,7 +43,10 @@ namespace Middleware
                 {
                     return authEvent.Item2;
                 }
+
                 error = "Timed out waiting for response";
+                logger.Log(LogLevel.Error, $"authentication failed: {error}");
+
                 //timed out waiting for response
             }
 
@@ -67,14 +69,14 @@ namespace Middleware
                 }
                 else
                 {
-                    Console.WriteLine("invalid authresult for request id {0}", requestId);
+                    logger.Log(LogLevel.Error, $"authentication failed. invalid authresult for request id {requestId}");
                 }
                 authPair.Item1.Set(); //signal waiting threads to proceed
                 return true;
             }
             else
             {
-                Console.WriteLine("unable to lookup response key {0}", requestId);
+                logger.Log(LogLevel.Error, $"authentication failed. unable to lookup response key for {requestId}");
             }
             return false;
         }

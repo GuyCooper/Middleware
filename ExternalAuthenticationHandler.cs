@@ -8,13 +8,17 @@ using Newtonsoft.Json;
 namespace Middleware
 {
     /// <summary>
-    /// use external authentication module to authenticate
+    /// External Module Authentication handler. Processes authentication requests by passing the request to the
+    /// endpoint passed in the constructor. The rquest is cached in the AuthRequestCache so the response can be
+    /// mapped to the original request
     /// </summary>
     class ExternalAuthenticationHandler : AuthenticationHandler
     {
-        private IEndpoint _endpoint;
-        private AuthRequestCache _authCache;
+        #region Public Methods
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public ExternalAuthenticationHandler(IEndpoint endpoint, AuthRequestCache authCache)
         {
             _endpoint = endpoint;
@@ -22,12 +26,11 @@ namespace Middleware
         }
 
         /// <summary>
-        /// method makes an asynchronous request to external auth server and waits for response
+        /// Method makes an asynchronous request to external auth server and waits for response.
         /// </summary>
-        /// <param name="login"></param>
-        /// <returns></returns>
-        protected override Task<AuthResult> AuthenticateUser(LoginPayload login)
+        protected override Task<AuthResult> AuthenticateUser(LoginPayload login, string sourceId)
         {
+            //marshall request onto its own thread so it can then block while waiting for auth response
             return Task.Factory.StartNew(() =>
             {
                 var message = new Message
@@ -35,7 +38,8 @@ namespace Middleware
                     Command = HandlerNames.LOGIN,
                     Type = MessageType.REQUEST,
                     Payload = JsonConvert.SerializeObject(login),
-                    RequestId = Guid.NewGuid().ToString()
+                    RequestId = Guid.NewGuid().ToString(),
+                    SourceId = sourceId
                 };
 
                 //create auth request
@@ -45,5 +49,37 @@ namespace Middleware
                 return _authCache.WaitForAuthResult(message.RequestId);
             });
         }
+        #endregion
+
+        #region Protected Methods
+
+        /// <summary>
+        /// Method called when endpoint using this authneitcation handler has been closed
+        /// remotely. Inform the remote authentication service that it needs to close this 
+        /// session.
+        /// </summary>
+        protected override void NotifyEndpointClosed(string id) 
+        {
+            var message = new Message
+            { 
+                Command = HandlerNames.NOTIFY_CLOSE,
+                Type = MessageType.REQUEST,
+                Payload = id,
+                RequestId = Guid.NewGuid().ToString()
+            };
+
+            _endpoint.SendData(message);
+        }
+
+        #endregion
+
+        #region Private Data Members
+
+        // Endpont to remote authentication service
+        private IEndpoint _endpoint;
+
+        // Cache that holds all authentiuction requests to remote clients
+        private AuthRequestCache _authCache;
+        #endregion
     }
 }

@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace Middleware
 {
+    /// <summary>
+    /// Defines an interface to handle all messages received by the middleware service.
+    /// </summary>
     interface IMessageHandler
     {
         bool ProcessMessage(MiddlewareMessage message);
@@ -15,21 +13,25 @@ namespace Middleware
     }
 
     /// <summary>
-    /// abstract base class for chaining command handlers. message passes through
+    /// Abstract base class for chaining command handlers. message passes through
     /// each handler in chain until it is handled
     /// </summary>
     abstract class CommandHandler : IMessageHandler
     {
-        private IMessageHandler _Next = null;
-        private string _Name;
+        #region Public Methods
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public CommandHandler(string name)
         {
             _Name = name;
         }
 
-        protected abstract void HandleMessageInternal(MiddlewareMessage message);
-
+        /// <summary>
+        /// Process a message on this handler. returns true if message was processed by this
+        /// handler otherwise returns false.
+        /// </summary>
         public bool ProcessMessage(MiddlewareMessage message)
         {
             if (message == null || message.Payload == null)
@@ -54,6 +56,10 @@ namespace Middleware
             return ProcessNextHandler(message);
         }
 
+        /// <summary>
+        /// Add a message handler to the chain. Message handler is implemented as a singly
+        /// linked list.
+        /// </summary>
         public void AddHandler(IMessageHandler handler)
         {
             IMessageHandler nextAvailable = _Next;
@@ -73,11 +79,33 @@ namespace Middleware
             }
         }
 
+        /// <summary>
+        /// Return next message handler in the chain.
+        /// </summary>
         public IMessageHandler GetNext()
         {
             return _Next;
         }
 
+        /// <summary>
+        /// Abstract method called when endpoint is closed.
+        /// </summary>
+        /// <param name="id"></param>
+        public abstract void RemoveEndpoint(string id);
+
+        #endregion
+
+        #region Protected Methods
+
+        /// <summary>
+        /// Internal method for handling a message on this handler.
+        /// </summary>
+        protected abstract void HandleMessageInternal(MiddlewareMessage message);
+
+        /// <summary>
+        /// Process message on next handler in chain if it exists. Otherewise
+        /// return false.
+        /// </summary>
         protected bool ProcessNextHandler(MiddlewareMessage message)
         {
             if (_Next != null)
@@ -87,29 +115,53 @@ namespace Middleware
             return false;
         }
 
-        public abstract void RemoveEndpoint(string id);
+        #endregion
+
+        #region Private Data Members
+
+        // Next handler in chain.
+        private IMessageHandler _Next = null;
+
+        // Name of this handler
+        private string _Name;
+
+        #endregion
     }
 
     /// <summary>
-    /// abstract base class for handlers with channels
+    /// Abstract base class for handlers with channels
     /// </summary>
     abstract class ChannelCommandHandler : CommandHandler
     {
-        protected IChannel _channel;
+        #region Public Methods
 
-        public ChannelCommandHandler(string name, IChannel channel) : base(name)
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public ChannelCommandHandler(string
+            name, IChannel channel) : base(name)
         {
             _channel = channel;
         }
 
+        /// <summary>
+        /// Called when an endpoint is closed
+        /// </summary>
         public override void RemoveEndpoint(string id)
         {
             _channel.RemoveEndpoint(id);
         }
 
+        #endregion
+
+        #region Protected Data Members
+
+        protected IChannel _channel;
+
+        #endregion
     }
     /// <summary>
-    /// add a subscriber to a channel
+    /// Add a subscriber to a channel handler.
     /// </summary>
     class SubscribeToChannelHandler : ChannelCommandHandler
     {
@@ -126,7 +178,7 @@ namespace Middleware
     }
 
     /// <summary>
-    /// remove a subscriber froma channel
+    /// Remove a subscriber froma channel handler.
     /// </summary>
     class RemoveSubscriptionHandler : ChannelCommandHandler
     {
@@ -143,7 +195,7 @@ namespace Middleware
     }
 
     /// <summary>
-    /// send a message to a specified endpoint on the specified channel
+    /// Send a message to a specified endpoint on the specified channel handler.
     /// </summary>
     class SendMessageHandler : ChannelCommandHandler
     {
@@ -160,7 +212,7 @@ namespace Middleware
     }
 
     /// <summary>
-    /// add an endpoint to uniquely handle all requests on a channel
+    /// Add an endpoint to uniquely handle all requests on a channel handler.
     /// </summary>
     class AddListenerHandler : ChannelCommandHandler
     {
@@ -177,8 +229,8 @@ namespace Middleware
     }
 
     /// <summary>
-    /// send a request to a channel. will only be handled if the channel
-    /// has a primary request handler
+    /// Send a request to a channel. will only be handled if the channel
+    /// has a primary request handler.
     /// </summary>
     class SendRequestHandler : ChannelCommandHandler
     {
@@ -194,6 +246,9 @@ namespace Middleware
         }
     }
 
+    /// <summary>
+    /// Public message handler. Message is published to all subscribers on this channel
+    /// </summary>
     class PublishMessageHandler : ChannelCommandHandler
     {
         public PublishMessageHandler(IChannel channel) :

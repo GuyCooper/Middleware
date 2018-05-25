@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
 
 namespace Middleware
 {
+    /// <summary>
+    /// Serialisable xml class for cxonnection stats
+    /// </summary>
     [XmlType("connection")]
     public class Connection
     {
@@ -26,6 +26,9 @@ namespace Middleware
         public double DataUpdates { get; set; }
     }
 
+    /// <summary>
+    /// Serialisable class for channel stats
+    /// </summary>
     [XmlType("channel")]
     public class ChannelStats
     {
@@ -37,6 +40,9 @@ namespace Middleware
         public double DataUpdates { get; set; }
     }
 
+    /// <summary>
+    /// Serialisable class for stats
+    /// </summary>
     [XmlRoot(ElementName = "stats")]
     public class FullStats
     {
@@ -52,6 +58,9 @@ namespace Middleware
         public Connection[] Connections { get; set; }
     }
 
+    /// <summary>
+    /// Interface for middleware stats
+    /// </summary>
     interface IMessageStats
     {
         void UpdateChannelStats(Message message);
@@ -61,16 +70,16 @@ namespace Middleware
         string ToXML();
     }
 
+    /// <summary>
+    /// Message stats class. Stores message stats in a cache and serialises them out into an xml format.
+    /// </summary>
     class MessageStats : IMessageStats
     {
-        private Dictionary<string, ChannelStats> _channelStats = new Dictionary<string, ChannelStats>();
+        #region Public Methods
 
-        private string _licenedTo;
-        private int _maxConnections;
-        private int _currentConnections;
-
-        private List<Connection> _connections = new List<Connection>();
-
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public MessageStats(string licenedTo, int maxConnections)
         {
             _licenedTo = licenedTo;
@@ -78,6 +87,9 @@ namespace Middleware
             _currentConnections = 0;
         }
 
+        /// <summary>
+        /// Update the channel stats
+        /// </summary>
         public void UpdateChannelStats(Message message)
         {
             ChannelStats channeldata;
@@ -111,6 +123,9 @@ namespace Middleware
             }
         }
 
+        /// <summary>
+        /// New connection received on middleware service
+        /// </summary>
         public void NewConnection(string id, string source, string appName, string version, bool isAuth)
         {
             if (_connections.Find(x => x.Id == id) == null)
@@ -126,6 +141,9 @@ namespace Middleware
             }
         }
 
+        /// <summary>
+        /// Connection closed on middleware service.
+        /// </summary>
         public void CloseConnection(string id, bool isAuth)
         {
             _currentConnections--;
@@ -136,11 +154,17 @@ namespace Middleware
             }
         }
 
+        /// <summary>
+        /// return the cache of channel stats
+        /// </summary>
         public IEnumerable<ChannelStats> GetChannelsStats()
         {
             return _channelStats.Values;
         }
 
+        /// <summary>
+        /// return an xml serialised  string of all the stats.
+        /// </summary>
         public string ToXML()
         {
             var writer = new StringWriter();
@@ -162,5 +186,19 @@ namespace Middleware
             //serialiser.Serialize(writer, xmlData);
             return writer.ToString();
         }
+
+        #endregion
+
+        #region Private Data Members
+
+        private Dictionary<string, ChannelStats> _channelStats = new Dictionary<string, ChannelStats>();
+
+        private string _licenedTo;
+        private int _maxConnections;
+        private int _currentConnections;
+
+        private List<Connection> _connections = new List<Connection>();
+
+        #endregion
     }
 }

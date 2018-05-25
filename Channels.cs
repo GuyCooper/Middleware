@@ -57,9 +57,7 @@ namespace Middleware
     class Channel :IChannel
     {
         private Dictionary<string, IEndpoint> _subscribers = new Dictionary<string, IEndpoint>();
-        private Dictionary<string, IEndpoint> _requesters = new Dictionary<string, IEndpoint>();
         private IEndpoint _PrimaryRequestHandler = null;
-       
 
         public string Name { get; set; }
 
@@ -99,7 +97,7 @@ namespace Middleware
             //destination specified
             var payload = message.Payload;
             IEndpoint destination;
-            if (payload.DestinationId != null && _requesters.TryGetValue(payload.DestinationId, out destination) == true)
+            if (payload.DestinationId != null && _subscribers.TryGetValue(payload.DestinationId, out destination) == true)
             {
                 destination.SendData(payload);
             }
@@ -128,11 +126,6 @@ namespace Middleware
 
                 var lookup = payload.SourceId ?? message.Source.Id;
 
-                if(_requesters.ContainsKey(lookup) == false)
-                {
-                    _requesters.Add(lookup, message.Source);
-                }
-
                 _PrimaryRequestHandler.SendData(payload);
             }
             else
@@ -154,10 +147,17 @@ namespace Middleware
         public void RemoveEndpoint(string id)
         {
             _subscribers.Remove(id);
-            _requesters.Remove(id);
-            if((_PrimaryRequestHandler != null)&&(_PrimaryRequestHandler.Id == id))
+            if(_PrimaryRequestHandler != null)
             {
-                _PrimaryRequestHandler = null;
+                if (_PrimaryRequestHandler.Id == id)
+                {
+                    _PrimaryRequestHandler = null;
+                }
+                else
+                {
+                    //inform the primary request handler that a session is closing
+                   
+                }
             }
         }
     }

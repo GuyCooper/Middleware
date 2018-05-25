@@ -1,81 +1,106 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Middleware;
 using Newtonsoft.Json;
+using NLog;
 
 namespace MiddlewareNetClient
 {
     public delegate void SendDataCallback(ISession session, string data);
     public delegate void HandleData(ISession session, Message message);
 
+    /// <summary>
+    /// Interface for Middleware client
+    /// </summary>
     public interface IMiddlewareManager
     {
         void OnMessageCallback(ISession session, string data);
         void OnConnectionClosed(ISession session);
     }
 
-    public interface ILogger
-    {
-        void LogError(string error);
-        void LogMessage(string message);
-    }
-
+    /// <summary>
+    /// Response of a request.
+    /// </summary>
     public class SendDataResponse
     {
-        public void Update(ISession session, string payload, bool success)
+        public void Update(ISession session, string payload, string requestId,  bool success)
         {
             Session = session;
             Payload = payload;
             Success = success;
+            RequestId = requestId;
         }
 
         public ISession Session { get; private set; }
         public string Payload { get; private set; }
         public bool Success { get; set; }
+        public string RequestId { get; private set; }
     }
 
+    /// <summary>
+    /// Manages all client middleware communication.
+    /// </summary>
     public class MiddlewareManager : IMiddlewareManager
     {
-        private readonly string VERSION = "1.0";
-        private readonly string APPNAME = "NET Client Library";
+        #region Public Methods
 
-        private Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>> currentRequestsList_ = new Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>>();
-
-        private HandleData _messageCallbackHandler = null;
-
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public Task<SendDataResponse> SubscribeToChannel(ISession session, string channel)
         {
-            return _RequestImp(session, channel, HandlerNames.SUBSCRIBETOCHANNEL, "", "");
+            return _RequestImp(session, channel, HandlerNames.SUBSCRIBETOCHANNEL, "", "", "");
         }
 
-        public void SendMessageToChannel(ISession session, string channel, string payload, string destination)
+        /// <summary>
+        /// SendMessageToChannel. This is called by a channel listener usually in response to a request
+        // on a channel. Message is always sent to a single recipient.
+        /// </summary>
+        public void SendMessageToChannel(ISession session, string channel, string payload, string destination, string requestId)
         {
             if (string.IsNullOrEmpty(destination))
             {
-                throw new ArgumentException("must specify a valid destination for sendMessage");
+                throw new ArgumentException("Must specify a valid destination for sendMessage");
             }
 
-            _PublishImp(session, channel, HandlerNames.SENDMESSAGE, payload, destination);
+            _PublishImp(session, channel, HandlerNames.SENDMESSAGE, payload, destination, requestId);
         }
 
+        /// <summary>
+        /// AddChannelListener. Asynchronous method makes a request to set this client as a listener
+        /// on the specified channel. his means that this client will handle all requests made to this
+        /// channel. response defines idf this request was successful or not
+        /// </summary>
 	    public Task<SendDataResponse> AddChannelListener(ISession session, string channel)
         {
-            return _RequestImp(session, channel, HandlerNames.ADDLISTENER, "", "");
+            return _RequestImp(session, channel, HandlerNames.ADDLISTENER, "", "", "");
         }
 
+        /// <summary>
+        /// Send a request to the specified channel. The request will be handled by the channel listener
+        /// as defined in the previous method. Asynchronus method. response defines if call was successful
+        /// or not.
+        /// </summary>
         public Task<SendDataResponse> SendRequest(ISession session, string channel, string payload)
         {
-            return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "");
+            return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "", "");
         }
 
+        /// <summary>
+        /// Register this client as an authentication handler for the middleware service. Payload 
+        /// must contain the login details for this client
+        /// </summary>
         public Task<SendDataResponse> RegisterAuthHandler(ISession session, string payload)
         {
-            return _RequestImp(session, "", HandlerNames.REGISTER_AUTH, payload, "");
+            return _RequestImp(session, "", HandlerNames.REGISTER_AUTH, payload, "", "");
         }
 
+        /// <summary>
+        /// Called by a client who has registered as an authenitcation handler in response to an
+        /// authenitcation request from another client. AuthResult contains the result of the
+        /// authneitcation request.
+        /// </summary>
         public void SendAuthenticationResponse(ISession session, string responseID, AuthResult result)
         {
             var message = new Message
@@ -89,12 +114,21 @@ namespace MiddlewareNetClient
             _SendMessageImpl(session, message);
         }
 
+        /// <summary>
+        /// Publish a message to the specified channel. Message will be received by all clients who
+        /// have subscribed to this channel.
+        /// </summary>
         public void PublishMessage(ISession session, string channel, string payload)
         {
-            _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "");
+            _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "", "");
         }
 
-	    public async Task<ISession> CreateSession(string url, string username, string password, ILogger logger)
+        /// <summary>
+        /// Create a client session on the middleware. This method must be called before any other
+        /// calls can be made on this interface. Asynchronous request. response contains an ISession
+        /// object to use for all requests to the middleware. session is null if request failed.
+        /// </summary>
+	    public async Task<ISession> CreateSession(string url, string username, string password, string appName)
         {
             var session =  new WebSocketSession(this, url);
             //first connect to the server
@@ -106,29 +140,40 @@ namespace MiddlewareNetClient
                 UserName = username,
                 Password = password,
                 Source = System.Environment.MachineName,
-                AppName = APPNAME,
+                AppName = appName??APPNAME,
                 Version = VERSION,
             };
 
-            var response = await _RequestImp(session, "LOGIN", HandlerNames.LOGIN, JsonConvert.SerializeObject(login), null);
+            var response = await _RequestImp(session, "LOGIN", HandlerNames.LOGIN, JsonConvert.SerializeObject(login), null, null);
             if(response.Success == true)
             {
-                logger.LogMessage(string.Format("Connect success. {0}", response.Payload));
+                logger.Log(LogLevel.Info, $"Connect success. {response.Payload}.");
                 return session;
             }
             else
             {
-                logger.LogError(string.Format("Connect failed. {0}", response.Payload));
+                logger.Log(LogLevel.Error, $"Connect failed. {response.Payload}.");
                 return null;
             }
         }
 
+        /// <summary>
+        /// Register a callback method to handle all callbacks to this client.
+        /// </summary>
+        /// <param name="msgCallback"></param>
         public void RegisterMessageCallbackFunction(HandleData msgCallback)
         {
             _messageCallbackHandler = msgCallback;
         }
 
-        private Message _CreateMessage(string channel, string command, string payload, string destination, MessageType type)
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Helper method for creating a Message object. generates a unique request id for message
+        /// </summary>
+        private Message _CreateMessage(string channel, string command, string payload, string destination, MessageType type, string requestId)
         {
             return new Message
             {
@@ -137,34 +182,44 @@ namespace MiddlewareNetClient
                 DestinationId = destination,
                 Payload = payload,
                 Type = type,
-                RequestId = Guid.NewGuid().ToString()
+                RequestId = string.IsNullOrEmpty(requestId) ?  Guid.NewGuid().ToString() : requestId
             };
         }
 
+        /// <summary>
+        /// Helper method for sending a message to the server.
+        /// </summary>
         private void _SendMessageImpl(ISession session, Message message)
         {
             var serialised = JsonConvert.SerializeObject(message);
             session.SendMessage(serialised);
         }
 
-        private void _PublishImp(ISession session, string channel, string command, string payload, string destination)
+        /// <summary>
+        /// Helper method for processing an update message.
+        /// </summary>
+        private void _PublishImp(ISession session, string channel, string command, string payload, string destination, string requestId)
         {
             if (session == null)
             {
                 throw new ArgumentNullException("session is null!!");
             }
-            var message = _CreateMessage(channel, command, payload, destination, MessageType.UPDATE);
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.UPDATE, requestId);
             _SendMessageImpl(session, message);
         }
 
-        private Task<SendDataResponse> _RequestImp(ISession session, string channel, string command, string payload, string destination)
+        /// <summary>
+        /// Helper method for processing a message request. message is added to a request queue so it can be
+        /// matched with a response when it happens.
+        /// </summary>
+        private Task<SendDataResponse> _RequestImp(ISession session, string channel, string command, string payload, string destination, string requestId)
         {
             if (session == null)
             {
                 throw new ArgumentNullException("session is null!!");
             }
 
-            var message = _CreateMessage(channel, command, payload, destination, MessageType.REQUEST);
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.REQUEST, requestId);
 
             var response = new SendDataResponse();
             var task = new Task<SendDataResponse>(() => { return response; });
@@ -173,8 +228,12 @@ namespace MiddlewareNetClient
             return task;
         }
 
+        /// <summary>
+        /// Method called when data is received from the server.
+        /// </summary>
         public void OnMessageCallback(ISession session, string data)
         {
+            logger.Log(LogLevel.Trace, $"data received: {data}");
             //deserailise data into a Message object
             Message msg = JsonConvert.DeserializeObject<Message>(data);
 
@@ -185,17 +244,19 @@ namespace MiddlewareNetClient
                 return;
             }
 
+            //try and map the message to a request. If mapped, invoke the task
+            //stored with the request
             Tuple< SendDataResponse, Task<SendDataResponse>> entry;
             if(currentRequestsList_.TryGetValue(msg.RequestId, out entry) == true)
             {
                 if(msg.Type == MessageType.RESPONSE_SUCCESS)
                 {
-                    entry.Item1.Update(session, msg.Payload, true);
+                    entry.Item1.Update(session, msg.Payload, msg.RequestId, true);
                     entry.Item2.Start();
                 }
                 else if (msg.Type == MessageType.RESPONSE_ERROR)
                 {
-                    entry.Item1.Update(session, msg.Payload, false);
+                    entry.Item1.Update(session, msg.Payload, msg.RequestId, false);
                     entry.Item2.Start();
 
                 }
@@ -203,9 +264,26 @@ namespace MiddlewareNetClient
             }
         }
 
+        /// <summary>
+        /// CLose connection.
+        /// </summary>
+        /// <param name="session"></param>
         public void OnConnectionClosed(ISession session)
         {
-
         }
+        #endregion
+
+        #region Private Data Members
+        private readonly string VERSION = "1.0";
+        private readonly string APPNAME = "NET Client Library";
+
+        //logger instance
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        private readonly Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>> currentRequestsList_ = new Dictionary<string, Tuple<SendDataResponse, Task<SendDataResponse>>>();
+
+        private HandleData _messageCallbackHandler = null;
+
+        #endregion
     }
 }

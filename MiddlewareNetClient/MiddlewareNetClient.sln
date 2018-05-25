@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIddlewareNetClientTest", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MIddlewareTestWindowsApp", "MIddlewareTestWindowsApp\MIddlewareTestWindowsApp.csproj", "{FB396C8B-0865-4EA9-AF50-160173453B5B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiddlewareTestConsoleApp", "MiddlewareTestConsoleApp\MiddlewareTestConsoleApp.csproj", "{D67BC0BE-EC04-4E68-B289-9FA793CD169B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{FB396C8B-0865-4EA9-AF50-160173453B5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB396C8B-0865-4EA9-AF50-160173453B5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB396C8B-0865-4EA9-AF50-160173453B5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D67BC0BE-EC04-4E68-B289-9FA793CD169B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D67BC0BE-EC04-4E68-B289-9FA793CD169B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D67BC0BE-EC04-4E68-B289-9FA793CD169B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D67BC0BE-EC04-4E68-B289-9FA793CD169B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

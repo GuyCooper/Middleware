@@ -29,6 +29,7 @@ namespace MiddlewareTests
                 ErrorEvent = new ManualResetEvent(false);
                 SuccessEvent = new ManualResetEvent(false);
             }
+            public void NotifySessionClosed(string id) { }
 
             public void DataReceived(string data) { }
 
@@ -258,6 +259,7 @@ namespace MiddlewareTests
             var message2 = _createTestMessage("channel1", source2, "test");
             message2.Payload.DestinationId = source1.Id;
             OuT.AddListener(message2);
+            OuT.AddSubscriber(message1);
             OuT.SendRequest(message1);
             OuT.SendMessage(message2);
             Assert.AreEqual(source1.DataSent, "test");

@@ -13,7 +13,7 @@ namespace MiddlewareTests
         public static readonly string TestUser = "bob";
         public static readonly string TestPassword = "piddy";
 
-        protected override Task<AuthResult> AuthenticateUser(LoginPayload login)
+        protected override Task<AuthResult> AuthenticateUser(LoginPayload login, string sourceId)
         {
            return Task.Factory.StartNew(() =>
            {
@@ -33,7 +33,7 @@ namespace MiddlewareTests
         {
             var UoT = new DefaultAuthenticationHandler();
             var login = new LoginPayload { UserName = "admin", Password = "password" };
-            var todo = UoT.HandleClientAuthentication(login);
+            var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
            {
                Assert.IsTrue(result.Result.Success);
@@ -45,7 +45,7 @@ namespace MiddlewareTests
         {
             var UoT = new DefaultAuthenticationHandler();
             var login = new LoginPayload { UserName = "admin", Password = "baddy" };
-            var todo = UoT.HandleClientAuthentication(login);
+            var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
                 Assert.IsFalse(result.Result.Success);
@@ -64,7 +64,7 @@ namespace MiddlewareTests
                 Password = TestAuthenticationHandler.TestPassword
             };
 
-            var todo = UoT.HandleClientAuthentication(login);
+            var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
                 Assert.IsTrue(result.Result.Success);
@@ -80,7 +80,7 @@ namespace MiddlewareTests
 
             var login = new LoginPayload { UserName = "bah", Password = "humbug" };
 
-            var todo = UoT.HandleClientAuthentication(login);
+            var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
                 Assert.IsFalse(result.Result.Success);

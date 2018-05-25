@@ -1,15 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using NLog;
 
 namespace Middleware
 {
+    /// <summary>
+    /// ConfigParser. Class parses the command line and processes each paramter with a predefined delegate
+    /// </summary>
     class ConfigParser
     {
+        #region Internal Types
         public delegate void Transform(string val);
 
+        /// <summary>
+        /// ParamHolder struct. Holds the values for each paraeter
+        /// </summary>
         struct ParamHolder
         {
             public Transform TransformFunc { get; set; }
@@ -17,8 +22,13 @@ namespace Middleware
             public string Value { get; set; }
         }
 
-        private Dictionary<string, ParamHolder> paramLookup = new Dictionary<string, ParamHolder>();
+        #endregion
 
+        #region Public Methods
+
+        /// <summary>
+        /// Add a parameter placeholder that defines what to do with the parameter and an optional default value
+        /// </summary>
         public void AddParameter(string key, string description, string defaultVal, Transform transform)
         {
             //first set the default value
@@ -26,6 +36,9 @@ namespace Middleware
             paramLookup.Add(key, new ParamHolder { Value = defaultVal, Description = description, TransformFunc = transform });
         }
 
+        /// <summary>
+        /// Parse the command line and process each command line parameter as defined in AddParameter
+        /// </summary>
         public void ParseCommandLine(string[] args)
         {
             foreach(var item in args)
@@ -47,12 +60,25 @@ namespace Middleware
             }
         }
 
+        /// <summary>
+        /// Log the values parsed from the command line
+        /// </summary>
         public void LogValues()
         {
             foreach(var parameter in paramLookup.Values)
             {
-                Console.WriteLine("{0}: {1}", parameter.Description, parameter.Value);
+                logger.Log(LogLevel.Info, $"{parameter.Description}:{parameter.Value}");
             }
         }
+
+        #endregion
+
+        #region Private Data Members
+        //lookup of parameter name to ParamHolder
+        private readonly Dictionary<string, ParamHolder> paramLookup = new Dictionary<string, ParamHolder>();
+
+        //logger instance
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+        #endregion
     }
 }

@@ -1,15 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using Newtonsoft.Json;
+using NLog;
 
 namespace Middleware
 {
+    /// <summary>
+    /// MiddlewareConfig class. Parses the command line parameters and stores the values in 
+    /// its piblic properties.
+    /// </summary>
     class MiddlewareConfig
     {
+        #region Constructor
+
+        /// <summary>
+        /// Constructor. Parse the command line parameters
+        /// </summary>
         public MiddlewareConfig(string[] args)
         {
             ConfigParser parser = new ConfigParser();
@@ -20,10 +26,12 @@ namespace Middleware
             parser.AddParameter("R", "root folder", @"C:\Projects\Middleware\Middleware", (val) => { this.RootFolder = val; });
             parser.AddParameter("T", "authg response timeout", "30000", (val) => { this.AuthTimeout = int.Parse(val); });
 
-            Console.WriteLine("parsing command line arguments...");
             parser.ParseCommandLine(args);
             parser.LogValues();
         }
+        #endregion
+
+        #region Public Properties
 
         public string URLS { get; private set; }
         public string AUTHURLS { get; private set; }
@@ -31,16 +39,23 @@ namespace Middleware
         public int MaxAuthConnections { get; private set; }
         public string RootFolder { get; private set; }
         public int AuthTimeout { get; private set; }
+
+        #endregion
     }
 
+    /// <summary>
+    /// Main Static Program class.
+    /// </summary>
     class Program
     {
-        static AutoResetEvent _shutdownEvent = new AutoResetEvent(false);
+        /// <summary>
+        /// Main Entry point into process.
+        /// </summary>
         static void Main(string[] args)
         {
             if(args.Length == 0)
             {
-                Console.WriteLine(@"syntax: Middleware <port (8080)> <max connections (10)> <root (//_root = (C:\Projects\Middleware\Middleware)>");
+                logger.Log(LogLevel.Info, @"syntax: Middleware <port (8080)> <max connections (10)> <root (//_root = (C:\Projects\Middleware\Middleware)>");
             }
 
             var config = new MiddlewareConfig(args);
@@ -51,11 +66,12 @@ namespace Middleware
             WSServer authServer = InitialiseAuthenticationServer(config, authHandler, stats);
             WSServer server = InitialiseEndpointServer(config, authHandler, stats);
 
-            Console.WriteLine("server initialised");
+            logger.Log(LogLevel.Info, "server initialised");
 
             _shutdownEvent.WaitOne();
 
-            Console.WriteLine("shutting down server");
+            logger.Log(LogLevel.Info, "shutting down server");
+
             authServer.Stop();
             server.Stop();
 
@@ -78,7 +94,7 @@ namespace Middleware
             messageHandler.AddHandler(new SubscribeToChannelHandler(channel));
             messageHandler.AddHandler(new RemoveSubscriptionHandler(channel));
 
-            Console.WriteLine("initialising endpoint server...");
+            logger.Log(LogLevel.Info, "initialising endpoint server...");
             EndpointManager manager = new EndpointManager(messageHandler, authHandler, stats);
 
             WSServer server = new Endpointserver(manager, config.RootFolder, stats);
@@ -97,7 +113,7 @@ namespace Middleware
             var messageHandler = new AuthLoginResponseHandler(authCache);
             messageHandler.AddHandler(new AuthRegisterMessageHandler(rootAuthHandler, authCache));
 
-            Console.WriteLine("initialising auth endpoint server...");
+            logger.Log(LogLevel.Info, "initialising auth endpoint server...");
             EndpointManager manager = new AuthenticationManager(messageHandler, rootAuthHandler, stats);
 
             WSServer server = new WSServer(manager);
@@ -107,5 +123,14 @@ namespace Middleware
             });
             return server;
         }
+
+        #region Private Static Data Members
+
+        static AutoResetEvent _shutdownEvent = new AutoResetEvent(false);
+
+        //logger instance
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        #endregion
     }
 }
