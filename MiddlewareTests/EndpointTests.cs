@@ -13,6 +13,10 @@ namespace MiddlewareTests
     {
         public List<string> DataList = new List<string>();
 
+        public void CloseConnection()
+        {
+        }
+
         public void SendData(string data)
         {
             DataList.Add(data);
@@ -104,7 +108,7 @@ namespace MiddlewareTests
            {
                AuthResponse response = t.Result;
                AuthResult result = response.Result;
-               Assert.IsTrue(result.Success);
+               Assert.AreEqual(AuthResult.ResultType.SUCCESS,  result.Result);
                Assert.IsTrue(endpoint.Authenticated);
            });
         }

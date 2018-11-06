@@ -19,7 +19,7 @@ namespace MiddlewareTests
            {
                return new AuthResult
                {
-                   Success = login.UserName == TestUser && login.Password == TestPassword
+                   Result = (login.UserName == TestUser && login.Password == TestPassword) ? AuthResult.ResultType.SUCCESS : AuthResult.ResultType.FAILED
                };
            });
         }
@@ -36,7 +36,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
            {
-               Assert.IsTrue(result.Result.Success);
+               Assert.AreEqual(AuthResult.ResultType.SUCCESS, result.Result);
            });
         }
 
@@ -48,7 +48,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
-                Assert.IsFalse(result.Result.Success);
+                Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
             });
 
         }
@@ -67,7 +67,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
-                Assert.IsTrue(result.Result.Success);
+                Assert.AreEqual(AuthResult.ResultType.SUCCESS, result.Result);
             });
 
         }
@@ -83,7 +83,7 @@ namespace MiddlewareTests
             var todo = UoT.HandleClientAuthentication(login, "1");
             todo.ContinueWith((result) =>
             {
-                Assert.IsFalse(result.Result.Success);
+                Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
             });
         }
     }

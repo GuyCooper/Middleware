@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-
-namespace Middleware
+﻿namespace Middleware
 {
     /// <summary>
     /// Static class containing message header keys.
@@ -69,6 +62,9 @@ namespace Middleware
         public string Payload { get; set; }
     }
 
+    /// <summary>
+    /// Login payload sent with authentication request.
+    /// </summary>
     public class LoginPayload
     {
         public string UserName { get; set; }
@@ -78,9 +74,22 @@ namespace Middleware
         public string Source { get; set; }
     }
 
+    /// <summary>
+    /// Authentication result returned from authentication server.
+    /// </summary>
     public class AuthResult
     {
-        public bool Success { get; set; }
-        public string Message { get; set; }
+        //Result type for auth result. Anything other than SUCCESS is an authenitcation
+        //fail and login cannot proceed. Client can be informed of result and act accordingly.
+        public enum ResultType
+        {
+            FAILED,
+            FAILED_PASSWORD_EXPIRED,
+            SUCCESS_TEMPORARY_PASSWORD,
+            SUCCESS,
+        }
+
+        public ResultType Result { get; set; }
+        public string Message { get; set; } //optional message
     }
 }

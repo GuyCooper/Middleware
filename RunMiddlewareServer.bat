@@ -1,2 +1,2 @@
 
-"C:\Projects\Middleware\Middleware\bin\Debug\Middleware.exe"
+"C:\Projects\Middleware\Middleware\bin\release\Middleware.exe"

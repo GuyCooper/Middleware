@@ -19,7 +19,7 @@ namespace MiddlewareTests
             cache.AddNewAuthRequest(requestid);
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
-            Assert.IsFalse(result.Success);
+            Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
         }
 
         [TestMethod]
@@ -29,7 +29,7 @@ namespace MiddlewareTests
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
-            Assert.IsFalse(result.Success);
+            Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
         }
 
         [TestMethod]
@@ -38,11 +38,11 @@ namespace MiddlewareTests
             string requestid = "1234";
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
             cache.AddNewAuthRequest(requestid);
-            AuthResult template = new AuthResult { Success = true, Message = "ok" };
+            AuthResult template = new AuthResult { Result = AuthResult.ResultType.SUCCESS, Message = "ok" };
             cache.UpdateAuthResult(requestid, template);
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
-            Assert.IsTrue(result.Success);
+            Assert.AreEqual(AuthResult.ResultType.SUCCESS, result.Result);
             Assert.AreEqual(result.Message, "ok");
         }
 
@@ -52,14 +52,13 @@ namespace MiddlewareTests
             string requestid = "1234";
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
             cache.AddNewAuthRequest(requestid);
-            AuthResult template = new AuthResult { Success = false, Message = "bum" };
+            AuthResult template = new AuthResult { Result = AuthResult.ResultType.FAILED, Message = "bum" };
             var ret = cache.UpdateAuthResult(requestid, template);
             Assert.IsTrue(ret);
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
-            Assert.IsFalse(result.Success);
+            Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
             Assert.AreEqual(result.Message, "bum");
         }
-
     }
 }

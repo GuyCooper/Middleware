@@ -19,7 +19,8 @@ namespace Middleware
         public MiddlewareConfig(string[] args)
         {
             ConfigParser parser = new ConfigParser();
-            parser.AddParameter("H", "server url","http://localhost:8080/", (val) => { this.URLS = val; });
+            parser.AddParameter("H", "server url", "http://localhost:8080/MWARE/", (val) => { this.URLS = val; });
+            //parser.AddParameter("H", "server url","https://localhost:8443/", (val) => { this.URLS = val; });
             parser.AddParameter("S", "auth url", "http://localhost:9092/", (val) => { this.AUTHURLS = val; });
             parser.AddParameter("M", "max client connections", "10", (val) => { this.MaxConnections = int.Parse(val); });
             parser.AddParameter("N", "max auth client connections", "1", (val) => { this.MaxAuthConnections = int.Parse(val); });

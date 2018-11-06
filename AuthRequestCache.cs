@@ -52,7 +52,7 @@ namespace Middleware
 
             return new AuthResult
             {
-                Success = false,
+                Result = AuthResult.ResultType.FAILED,
                 Message = error
             };
         }
@@ -64,7 +64,7 @@ namespace Middleware
             {
                 if (result != null)
                 {
-                    authPair.Item2.Success = result.Success;
+                    authPair.Item2.Result = result.Result;
                     authPair.Item2.Message = result.Message;
                 }
                 else

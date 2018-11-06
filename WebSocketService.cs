@@ -34,6 +34,7 @@ namespace Middleware
         public WebsocketConnection(WebSocket socket)
         {
             _socket = socket;
+            _socketClosed = false;
         }
 
         /// <summary>
@@ -41,10 +42,31 @@ namespace Middleware
         /// </summary>
         public async void SendData(string data)
         {
+            if(_socketClosed == true)
+            {
+                logger.Warn($"socket closed, unable to send data");
+                return;
+            }
+
             var encoded = Encoding.UTF8.GetBytes(data);
             var buffer = new ArraySegment<Byte>(encoded, 0, encoded.Length);
 
+            if(_socket.State != WebSocketState.Open)
+            {
+                logger.Warn("socket connection not in open state. unable to send data");
+                return;
+            }
+
             await _socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Set this connection as closed. Any subsequent calls to senddata should fail. Closing
+        /// a socket is a one way operation and socket cannot subsequently be reopend
+        /// </summary>
+        public void CloseConnection()
+        {
+            _socketClosed = true;
         }
 
         /// <summary>
@@ -62,6 +84,7 @@ namespace Middleware
 
         //logger instance
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        private bool _socketClosed;
 
         #endregion
     }
@@ -115,6 +138,8 @@ namespace Middleware
             var connection = _LookupConnection(socket);
             if(connection != null)
             {
+                //set connection as closed so noone can send any more data on it5
+                connection.CloseConnection();
                 var endpoint = _endpoints[connection];
                 endpoint.EndpointClosed();
                 _endpoints.Remove(connection);
@@ -140,7 +165,7 @@ namespace Middleware
                    {
                        AuthResponse response = t.Result;
                        AuthResult authResult = response.Result;
-                       if (authResult.Success == false)
+                       if (authResult.Result != AuthResult.ResultType.SUCCESS)
                        {
                            //authentication failed,
                            logger.Log(LogLevel.Error, $"Authentication failed on endpoint {endpoint.Id}: {authResult.Message}. Removing endpoint.");

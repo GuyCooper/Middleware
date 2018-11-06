@@ -15,6 +15,12 @@ namespace Middleware
         /// Send data to this connection
         /// </summary>
         void SendData(string data);
+
+        /// <summary>
+        /// Method sets this connection as closed. SHould not attempt to send any 
+        /// subsequent messages out on this socket
+        /// </summary>
+        void CloseConnection();
     }
 
     /// <summary>
@@ -34,7 +40,7 @@ namespace Middleware
         {
             Result = new AuthResult
             {
-                Success = success,
+                Result = success ? AuthResult.ResultType.SUCCESS : AuthResult.ResultType.FAILED,
                 Message = message
             };
 
@@ -150,8 +156,9 @@ namespace Middleware
             LoginPayload login = JsonConvert.DeserializeObject<LoginPayload>(message.Payload);
 
             var result = await _authHandler.HandleClientAuthentication(login, Id);
-            Authenticated = result.Success;
-            message.Payload = result.Message;
+            //user only authenticated if result is SUCCESS.
+            Authenticated = result.Result == AuthResult.ResultType.SUCCESS;
+            message.Payload = JsonConvert.SerializeObject(result);
             if (Authenticated == true)
             {
                 OnSucess(message);

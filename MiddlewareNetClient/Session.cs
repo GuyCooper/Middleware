@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Net.WebSockets;
 using System.IO;
 using System.Collections.Concurrent;
+using NLog;
 
 namespace MiddlewareNetClient
 {
@@ -50,18 +51,27 @@ namespace MiddlewareNetClient
         {
             if (_ws == null)
             {
+
                 _ws = new ClientWebSocket();
+
                 _ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTLOCATION, System.Environment.MachineName);
                 //_ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTUSERNAME, "admin");
                 //_ws.Options.SetRequestHeader(Middleware.MessageHeaders.CLIENTPASSWORD, "password");
 
                 await _ws.ConnectAsync(_uri, System.Threading.CancellationToken.None).ContinueWith(async (t) =>
                 {
-                    //_connectEvent.Set();
-                    while (_ws.State == WebSocketState.Open)
+                    try
                     {
-                        string data = await _readDatafromSocket(_ws);
-                        _manager.OnMessageCallback(this, data);
+                        //_connectEvent.Set();
+                        while (_ws.State == WebSocketState.Open)
+                        {
+                            string data = await _readDatafromSocket(_ws);
+                            _manager.OnMessageCallback(this, data);
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        logger.Log(LogLevel.Error, ex);
                     }
 
                     //connection closed
@@ -119,9 +129,12 @@ namespace MiddlewareNetClient
                 string message;
                 if(_sendQueue.TryTake(out message, 100) == true)
                 {
-                    ArraySegment<byte> bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
-                    var result = _ws.SendAsync(bytesToSend, WebSocketMessageType.Text, true, CancellationToken.None);
-                    result.Wait();
+                    if (_ws.State == WebSocketState.Open)
+                    {
+                        ArraySegment<byte> bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
+                        var result = _ws.SendAsync(bytesToSend, WebSocketMessageType.Text, true, CancellationToken.None);
+                        result.Wait();
+                    }
                 }
             }
         }
@@ -176,6 +189,9 @@ namespace MiddlewareNetClient
         //producer / consumer collection for sending data to websocket. Only a single call to senddataastnc can be
         //made at any time so this allows multiple threads to senddata on this class concurrently
         private readonly BlockingCollection<string> _sendQueue = new BlockingCollection<string>();
+
+        //logger instance
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         #endregion
     }

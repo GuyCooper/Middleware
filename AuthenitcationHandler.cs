@@ -26,7 +26,7 @@ namespace Middleware
         public async Task<AuthResult> HandleClientAuthentication(LoginPayload login, string sourceId)
         {
             var result = await AuthenticateUser(login, sourceId);
-            if (result.Success == false)
+            if (result.Result == AuthResult.ResultType.FAILED)
             {
                 if (_Next != null)
                 {
@@ -65,13 +65,13 @@ namespace Middleware
                var result = new AuthResult();
                if(login.UserName == "admin" && login.Password == "password")
                {
-                   result.Success = true;
-                   result.Message = "Autheitcation Passed";
+                   result.Result = AuthResult.ResultType.SUCCESS;
+                   result.Message = "Authentication Passed";
                }
                else
                {
-                   result.Success = false;
-                   result.Message = "Autheitcation Failed";
+                   result.Result = AuthResult.ResultType.FAILED;
+                   result.Message = "Authentication Failed";
                }
                return result;
            });
