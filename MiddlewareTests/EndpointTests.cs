@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Middleware;
 using Newtonsoft.Json;
+using MiddlewareInterfaces;
 
 namespace MiddlewareTests
 {
@@ -17,9 +15,9 @@ namespace MiddlewareTests
         {
         }
 
-        public void SendData(string data)
+        public void SendData(byte[] data)
         {
-            DataList.Add(data);
+            DataList.Add(MiddlewareUtils.DeserialiseObject<string>(data));
         }
     }
 
@@ -66,6 +64,7 @@ namespace MiddlewareTests
             Assert.IsNotNull(endpoint.Id);
         }
 
+
         [TestMethod]
         public void When_receiving_null_data()
         {
@@ -78,7 +77,7 @@ namespace MiddlewareTests
         public void When_receiving_payload__non_authenticated()
         {
             var endpoint = new MiddlewareEndpoint(new TestConnection(), new TestHandler(), new DefaultAuthenticationHandler());
-            var payload = JsonConvert.SerializeObject(_CreateTestMessage(HandlerNames.SENDREQUEST, TestPayload));
+            var payload = MiddlewareUtils.SerialiseObject(_CreateTestMessage(HandlerNames.SENDREQUEST, TestPayload));
             bool bError = false;
             try
             {
@@ -100,9 +99,8 @@ namespace MiddlewareTests
                 UserName = "admin",
                 Password = "password"
             };
-            var loginPayload = JsonConvert.SerializeObject(login);
 
-            var payload = JsonConvert.SerializeObject(_CreateTestMessage(HandlerNames.LOGIN, TestPayload));
+            var payload = MiddlewareUtils.SerialiseObject(_CreateTestMessage(HandlerNames.LOGIN, TestPayload));
 
             endpoint.AuthenticateEndpoint(payload).ContinueWith(t =>
            {

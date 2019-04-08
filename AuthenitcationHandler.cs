@@ -65,6 +65,7 @@ namespace Middleware
                var result = new AuthResult();
                if(login.UserName == "admin" && login.Password == "password")
                {
+                   result.ConnectionId = sourceId;
                    result.Result = AuthResult.ResultType.SUCCESS;
                    result.Message = "Authentication Passed";
                }

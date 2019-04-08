@@ -9,6 +9,17 @@ var MiddleWare = function () {
     var ws;
     var callQueue = [];
 
+    var convertToByteArray = function (object) {
+        var resultArray = [];
+        for (var i = 0; i < object.length; i++) {
+            var bytes = [];
+            for (var j = 0; j < object[i].length; ++j)
+                bytes.push(object[i].charCodeAt(j));
+            resultArray.push(bytes);
+        }
+        return resultArray;
+    };
+
     this.Connect = function (server, username, password, onopen, onerror, onmessage) {
         ws = new WebSocket(server);
 
@@ -60,7 +71,7 @@ var MiddleWare = function () {
                 Version: "1.0"
             };
 
-            processRequestInternal("LOGIN", "DOLOGIN", 0, JSON.stringify(loginRequest), null, loginSuccess, loginFail);
+            processRequestInternal("LOGIN", "DOLOGIN", 0, loginRequest, null, loginSuccess, loginFail);
         };
 
         ws.onmessage = function (data) {
@@ -97,7 +108,7 @@ var MiddleWare = function () {
             Command: command,
             Channel: channel,
             Type: type,
-            Payload: data,
+            Payload: convertToByteArray(data),
             DestinationId: destination
         };
 
@@ -111,7 +122,7 @@ var MiddleWare = function () {
             });
         }
 
-        ws.send(JSON.stringify(payload));
+        ws.send(convertToByteArray(payload));
     }
 
     var processRequest = function(channel, command, type, data, destination) {

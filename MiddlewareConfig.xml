@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+  <hosturls>http://localhost:8080/MWARE/</hosturls>
+  <authurls>http://localhost:9092/</authurls>
+  <maxconnections>10</maxconnections>
+  <maxauthconnections>1</maxauthconnections>
+  <filehandlerpath>C:\Projects\InvestmentBuilder\InvestmentBuilderFileHandler\bin\Debug</filehandlerpath>
+  <authtimeoutms>30000</authtimeoutms>
+</configuration>

@@ -60,6 +60,7 @@
         public string SourceId { get; set; }
         public string DestinationId { get; set; }
         public string Payload { get; set; }
+        public byte[] BinaryPayload { get; set; }
     }
 
     /// <summary>
@@ -91,5 +92,6 @@
 
         public ResultType Result { get; set; }
         public string Message { get; set; } //optional message
+        public string ConnectionId { get; set; } //id of connection being authorised
     }
 }

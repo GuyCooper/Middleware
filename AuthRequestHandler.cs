@@ -1,6 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 using NLog;
+using MiddlewareInterfaces;
 
 namespace Middleware
 {
@@ -21,7 +22,7 @@ namespace Middleware
         protected override void HandleMessageInternal(MiddlewareMessage message)
         {
             Message msg = message.Payload;
-            AuthResult authResult = msg.Payload != null ? JsonConvert.DeserializeObject<AuthResult>(msg.Payload) : null;
+            AuthResult authResult = msg.Payload != null ? MiddlewareUtils.DeserialiseObject<AuthResult>(msg.Payload) : null;
             if(_authCache.UpdateAuthResult(msg.RequestId, authResult) == false)
             {
                 logger.Log(LogLevel.Error, $"authentication failed. unknown login response message. request id: {msg.RequestId}");

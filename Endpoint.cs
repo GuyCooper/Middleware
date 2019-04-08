@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using System.Threading;
 using NLog;
+using MiddlewareInterfaces;
 
 namespace Middleware
 {
@@ -14,7 +14,7 @@ namespace Middleware
         /// <summary>
         /// Send data to this connection
         /// </summary>
-        void SendData(string data);
+        void SendData(byte[] data);
 
         /// <summary>
         /// Method sets this connection as closed. SHould not attempt to send any 
@@ -95,9 +95,9 @@ namespace Middleware
         void SendData(Message message);
         void OnError(Message message, string error);
         void OnSucess(Message message);
-        void DataReceived(string data);
+        void DataReceived(byte[] data);
         bool Authenticated { get; }
-        Task<AuthResponse> AuthenticateEndpoint(string data);
+        Task<AuthResponse> AuthenticateEndpoint(byte[] data);
         void EndpointClosed();
         void NotifySessionClosed(string id);
     }
@@ -132,9 +132,9 @@ namespace Middleware
         /// <summary>
         /// Authenticate this endpoint with a loginrequest.
         /// </summary>
-        public async Task<AuthResponse> AuthenticateEndpoint(string data)
+        public async Task<AuthResponse> AuthenticateEndpoint(byte[] data)
         {
-            if (string.IsNullOrEmpty(data))
+            if (data == null || data.Length == 0)
             {
                 return new AuthResponse(false, "invalid payload", null);
             }
@@ -142,7 +142,7 @@ namespace Middleware
             Message message;
             try
             {
-                message = JsonConvert.DeserializeObject<Message>(data);
+                message = MiddlewareUtils.DeserialiseObject<Message>(data);
                 if (message.Command != HandlerNames.LOGIN)
                 {
                     return new AuthResponse(false, "Cannot process request. User not authenticated", null);
@@ -153,12 +153,12 @@ namespace Middleware
                 return new AuthResponse(false, "cannot deserailise login message. " + e.Message, null);
             }
 
-            LoginPayload login = JsonConvert.DeserializeObject<LoginPayload>(message.Payload);
+            LoginPayload login = MiddlewareUtils.DeserialiseObject<LoginPayload>(message.Payload);
 
             var result = await _authHandler.HandleClientAuthentication(login, Id);
             //user only authenticated if result is SUCCESS.
             Authenticated = result.Result == AuthResult.ResultType.SUCCESS;
-            message.Payload = JsonConvert.SerializeObject(result);
+            message.Payload = MiddlewareUtils.SerialiseObjectToString(result);
             if (Authenticated == true)
             {
                 OnSucess(message);
@@ -174,16 +174,16 @@ namespace Middleware
         /// <summary>
         /// Method called when data received on this endpoint.
         /// </summary>
-        public void DataReceived(string data)
+        public void DataReceived(byte[] data)
         {
-            if (string.IsNullOrEmpty(data))
+            if(data == null || data.Length == 0)
             {
                 return;
             }
 
-            logger.Log(LogLevel.Trace, $"data received on endpoint {Id},thread id {Thread.CurrentThread.ManagedThreadId}. data {data}");
+            //logger.Log(LogLevel.Trace, $"data received on endpoint {Id},thread id {Thread.CurrentThread.ManagedThreadId}. data {data}");
 
-            Message message = JsonConvert.DeserializeObject<Message>(data);
+            Message message = MiddlewareUtils.DeserialiseObject<Message>(data);
             //populate the session id
             //message.Source = this;
             message.SourceId = Id;
@@ -211,7 +211,7 @@ namespace Middleware
         public void SendData(Message message)
         {
             //ensure that the Source endpoint member is NT serialised
-            var payload = JsonConvert.SerializeObject(message);
+            var payload = MiddlewareUtils.SerialiseObject(message);
             _connection.SendData(payload);
         }
 
@@ -232,7 +232,7 @@ namespace Middleware
                     Payload = error
                 };
 
-                var payload = JsonConvert.SerializeObject(response);
+                var payload = MiddlewareUtils.SerialiseObject(response);
 
                 logger.Log(LogLevel.Trace, $"Endpoint OnError. {payload}.");
                 _connection.SendData(payload);
@@ -254,9 +254,10 @@ namespace Middleware
                     Type = MessageType.RESPONSE_SUCCESS,
                     RequestId = message.RequestId,
                     Channel = message.Channel,
-                    Command = message.Command
+                    Command = message.Command,
+                    Payload = message.Payload
                 };
-                var payload = JsonConvert.SerializeObject(response);
+                var payload = MiddlewareUtils.SerialiseObject(response);
 
                 logger.Log(LogLevel.Trace, $"Endpoint OnSuccess. {payload}");
                 _connection.SendData(payload);

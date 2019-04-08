@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using MiddlewareInterfaces;
 
 namespace Middleware
 {
@@ -37,13 +38,13 @@ namespace Middleware
                 {
                     Command = HandlerNames.LOGIN,
                     Type = MessageType.REQUEST,
-                    Payload = JsonConvert.SerializeObject(login),
+                    Payload = MiddlewareUtils.SerialiseObjectToString(login),
                     RequestId = Guid.NewGuid().ToString(),
                     SourceId = sourceId
                 };
 
                 //create auth request
-                _authCache.AddNewAuthRequest(message.RequestId);
+                _authCache.AddNewAuthRequest(sourceId, message.RequestId);
                 _endpoint.SendData(message);
                 //wait for response from auth server
                 return _authCache.WaitForAuthResult(message.RequestId);

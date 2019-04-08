@@ -9,6 +9,7 @@ using System.Threading;
 using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
+using MiddlewareInterfaces;
 
 namespace MiddlewareTests
 {
@@ -31,10 +32,10 @@ namespace MiddlewareTests
             }
             public void NotifySessionClosed(string id) { }
 
-            public void DataReceived(string data) { }
+            public void DataReceived(byte[] data) { }
 
             public bool Authenticated { get { return true; } }
-            public Task<AuthResponse> AuthenticateEndpoint(string data) { return null; }
+            public Task<AuthResponse> AuthenticateEndpoint(byte[] data) { return null; }
 
             public string DataSent { get; private set; }
             public string Id { get { return _id; } }
@@ -229,7 +230,7 @@ namespace MiddlewareTests
             var OuT = new Channel();
             OuT.AddListener(testMessage1);
             OuT.SendRequest(testMessage2);
-            Assert.AreEqual(source1.DataSent, "test");
+            Assert.AreEqual( source1.DataSent, "test");
         }
 
         [TestMethod]

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Middleware;
 using Newtonsoft.Json;
 using NLog;
+using MiddlewareInterfaces;
 
 namespace MiddlewareNetClient
 {
@@ -15,7 +16,7 @@ namespace MiddlewareNetClient
     /// </summary>
     public interface IMiddlewareManager
     {
-        void OnMessageCallback(ISession session, string data);
+        void OnMessageCallback(ISession session, byte[] data);
         void OnConnectionClosed(ISession session);
     }
 
@@ -50,21 +51,21 @@ namespace MiddlewareNetClient
         /// </summary>
         public Task<SendDataResponse> SubscribeToChannel(ISession session, string channel)
         {
-            return _RequestImp(session, channel, HandlerNames.SUBSCRIBETOCHANNEL, "", "", "");
+            return _RequestImp(session, channel, HandlerNames.SUBSCRIBETOCHANNEL, null, "", "", null);
         }
 
         /// <summary>
         /// SendMessageToChannel. This is called by a channel listener usually in response to a request
         // on a channel. Message is always sent to a single recipient.
         /// </summary>
-        public void SendMessageToChannel(ISession session, string channel, string payload, string destination, string requestId)
+        public void SendMessageToChannel(ISession session, string channel, string payload, string destination, string requestId, byte[] binaryPayload = null)
         {
             if (string.IsNullOrEmpty(destination))
             {
                 throw new ArgumentException("Must specify a valid destination for sendMessage");
             }
 
-            _PublishImp(session, channel, HandlerNames.SENDMESSAGE, payload, destination, requestId);
+            _PublishImp(session, channel, HandlerNames.SENDMESSAGE, payload, destination, requestId, binaryPayload);
         }
 
         /// <summary>
@@ -74,7 +75,7 @@ namespace MiddlewareNetClient
         /// </summary>
 	    public Task<SendDataResponse> AddChannelListener(ISession session, string channel)
         {
-            return _RequestImp(session, channel, HandlerNames.ADDLISTENER, "", "", "");
+            return _RequestImp(session, channel, HandlerNames.ADDLISTENER, null, "", "", null);
         }
 
         /// <summary>
@@ -82,9 +83,9 @@ namespace MiddlewareNetClient
         /// as defined in the previous method. Asynchronus method. response defines if call was successful
         /// or not.
         /// </summary>
-        public Task<SendDataResponse> SendRequest(ISession session, string channel, string payload)
+        public Task<SendDataResponse> SendRequest(ISession session, string channel, string payload, byte[] binaryPayload = null)
         {
-            return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "", "");
+            return _RequestImp(session, channel, HandlerNames.SENDREQUEST, payload, "", "", null);
         }
 
         /// <summary>
@@ -93,7 +94,7 @@ namespace MiddlewareNetClient
         /// </summary>
         public Task<SendDataResponse> RegisterAuthHandler(ISession session, string payload)
         {
-            return _RequestImp(session, "", HandlerNames.REGISTER_AUTH, payload, "", "");
+            return _RequestImp(session, "", HandlerNames.REGISTER_AUTH, payload, "", "", null);
         }
 
         /// <summary>
@@ -108,7 +109,7 @@ namespace MiddlewareNetClient
                 Command = HandlerNames.LOGIN,
                 Type = MessageType.REQUEST,
                 RequestId = responseID,
-                Payload = JsonConvert.SerializeObject(result)
+                Payload = MiddlewareUtils.SerialiseObjectToString(result)
             };
 
             _SendMessageImpl(session, message);
@@ -118,9 +119,9 @@ namespace MiddlewareNetClient
         /// Publish a message to the specified channel. Message will be received by all clients who
         /// have subscribed to this channel.
         /// </summary>
-        public void PublishMessage(ISession session, string channel, string payload)
+        public void PublishMessage(ISession session, string channel, string payload, byte[] binaryPayload = null)
         {
-            _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "", "");
+            _PublishImp(session, channel, HandlerNames.PUBLISHMESSAGE, payload, "", "", binaryPayload);
         }
 
         /// <summary>
@@ -144,7 +145,7 @@ namespace MiddlewareNetClient
                 Version = VERSION,
             };
 
-            var response = await _RequestImp(session, "LOGIN", HandlerNames.LOGIN, JsonConvert.SerializeObject(login), null, null);
+            var response = await _RequestImp(session, "LOGIN", HandlerNames.LOGIN, MiddlewareUtils.SerialiseObjectToString(login), null, null, null);
             if(response.Success == true)
             {
                 logger.Log(LogLevel.Info, $"Connect success. {response.Payload}.");
@@ -173,7 +174,7 @@ namespace MiddlewareNetClient
         /// <summary>
         /// Helper method for creating a Message object. generates a unique request id for message
         /// </summary>
-        private Message _CreateMessage(string channel, string command, string payload, string destination, MessageType type, string requestId)
+        private Message _CreateMessage(string channel, string command, string payload, string destination, MessageType type, string requestId, byte[] binaryPayload)
         {
             return new Message
             {
@@ -182,7 +183,8 @@ namespace MiddlewareNetClient
                 DestinationId = destination,
                 Payload = payload,
                 Type = type,
-                RequestId = string.IsNullOrEmpty(requestId) ?  Guid.NewGuid().ToString() : requestId
+                RequestId = string.IsNullOrEmpty(requestId) ?  Guid.NewGuid().ToString() : requestId,
+                BinaryPayload = binaryPayload
             };
         }
 
@@ -191,20 +193,21 @@ namespace MiddlewareNetClient
         /// </summary>
         private void _SendMessageImpl(ISession session, Message message)
         {
-            var serialised = JsonConvert.SerializeObject(message);
+            var serialised = MiddlewareUtils.SerialiseObject(message);
             session.SendMessage(serialised);
         }
 
         /// <summary>
         /// Helper method for processing an update message.
         /// </summary>
-        private void _PublishImp(ISession session, string channel, string command, string payload, string destination, string requestId)
+        private void _PublishImp(ISession session, string channel, string command, string payload, string destination, string requestId, byte[]  binaryPayload)
         {
             if (session == null)
             {
                 throw new ArgumentNullException("session is null!!");
             }
-            var message = _CreateMessage(channel, command, payload, destination, MessageType.UPDATE, requestId);
+
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.UPDATE, requestId, binaryPayload);
             _SendMessageImpl(session, message);
         }
 
@@ -212,14 +215,14 @@ namespace MiddlewareNetClient
         /// Helper method for processing a message request. message is added to a request queue so it can be
         /// matched with a response when it happens.
         /// </summary>
-        private Task<SendDataResponse> _RequestImp(ISession session, string channel, string command, string payload, string destination, string requestId)
+        private Task<SendDataResponse> _RequestImp(ISession session, string channel, string command, string payload, string destination, string requestId, byte[] binaryPayload)
         {
             if (session == null)
             {
                 throw new ArgumentNullException("session is null!!");
             }
 
-            var message = _CreateMessage(channel, command, payload, destination, MessageType.REQUEST, requestId);
+            var message = _CreateMessage(channel, command, payload, destination, MessageType.REQUEST, requestId, binaryPayload);
 
             var response = new SendDataResponse();
             var task = new Task<SendDataResponse>(() => { return response; });
@@ -231,11 +234,11 @@ namespace MiddlewareNetClient
         /// <summary>
         /// Method called when data is received from the server.
         /// </summary>
-        public void OnMessageCallback(ISession session, string data)
+        public void OnMessageCallback(ISession session, byte[] data)
         {
-            logger.Log(LogLevel.Trace, $"data received: {data}");
+            logger.Log(LogLevel.Trace, $"data received: {data.Length}");
             //deserailise data into a Message object
-            Message msg = JsonConvert.DeserializeObject<Message>(data);
+            Message msg = MiddlewareUtils.DeserialiseObject<Message>(data);
 
             if (msg.Type == MessageType.REQUEST || msg.Type == MessageType.UPDATE)
             {

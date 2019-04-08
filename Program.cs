@@ -2,46 +2,99 @@
 using System.Threading.Tasks;
 using System.Threading;
 using NLog;
+using System.Xml;
+using System.Xml.Serialization;
+using System.IO;
+using System.Reflection;
 
 namespace Middleware
 {
     /// <summary>
-    /// MiddlewareConfig class. Parses the command line parameters and stores the values in 
-    /// its piblic properties.
+    /// XML serialisible Class contains configuration parameters for middleware process.
+    /// </summary>
+    [XmlRoot(ElementName = "configuration")]
+    public class ConfigurationSettings
+    {
+        #region Public Properties
+
+        [XmlElement("hosturls")]
+        public string URLS { get; set; }
+        [XmlElement("authurls")]
+        public string AUTHURLS { get; set; }
+        [XmlElement("maxconnections")]
+        public int MaxConnections { get; set; }
+        [XmlElement("maxauthconnections")]
+        public int MaxAuthConnections { get; set; }
+        [XmlElement("authtimeoutms")]
+        public int AuthTimeoutMS { get; set; }
+        [XmlElement("filehandlerpath")]
+        public string FileRequestHandlerPath { get; set; }
+
+        #endregion
+
+    }
+    /// <summary>
+    /// MiddlewareConfig class. Parses the configuration file.
     /// </summary>
     class MiddlewareConfig
     {
         #region Constructor
 
         /// <summary>
+        /// Constructor. Parse the config file
+        /// </summary>
+        public MiddlewareConfig(string filename, Logger logger)
+        {
+            using (var fs = new FileStream(filename, FileMode.Open))
+            {
+                XmlSerializer serialiser = new XmlSerializer(typeof(ConfigurationSettings));
+                _configuration = (ConfigurationSettings)serialiser.Deserialize(fs);
+            }
+
+            //log the parameters
+            var properties = _configuration.GetType().GetProperties(BindingFlags.Public|BindingFlags.Instance);
+            foreach(var property in properties)
+            {
+                logger.Info($"{property.Name} : {property.GetValue(_configuration)}");
+            }
+        }
+
+        /// <summary>
         /// Constructor. Parse the command line parameters
         /// </summary>
-        public MiddlewareConfig(string[] args)
-        {
-            ConfigParser parser = new ConfigParser();
-            parser.AddParameter("H", "server url", "http://localhost:8080/MWARE/", (val) => { this.URLS = val; });
-            //parser.AddParameter("H", "server url","https://localhost:8443/", (val) => { this.URLS = val; });
-            parser.AddParameter("S", "auth url", "http://localhost:9092/", (val) => { this.AUTHURLS = val; });
-            parser.AddParameter("M", "max client connections", "10", (val) => { this.MaxConnections = int.Parse(val); });
-            parser.AddParameter("N", "max auth client connections", "1", (val) => { this.MaxAuthConnections = int.Parse(val); });
-            parser.AddParameter("R", "root folder", @"C:\Projects\Middleware\Middleware", (val) => { this.RootFolder = val; });
-            parser.AddParameter("T", "authg response timeout", "30000", (val) => { this.AuthTimeout = int.Parse(val); });
+        //public MiddlewareConfig(string[] args)
+        //{
+        //    ConfigParser parser = new ConfigParser();
+        //    parser.AddParameter("H", "server url", "http://localhost:8080/MWARE/", (val) => { this.URLS = val; });
+        //    //parser.AddParameter("H", "server url","https://localhost:8443/", (val) => { this.URLS = val; });
+        //    parser.AddParameter("S", "auth url", "http://localhost:9092/", (val) => { this.AUTHURLS = val; });
+        //    parser.AddParameter("M", "max client connections", "10", (val) => { this.MaxConnections = int.Parse(val); });
+        //    parser.AddParameter("N", "max auth client connections", "1", (val) => { this.MaxAuthConnections = int.Parse(val); });
+        //    parser.AddParameter("R", "root folder", @"C:\Projects\Middleware\Middleware", (val) => { this.RootFolder = val; });
+        //    parser.AddParameter("T", "authg response timeout", "30000", (val) => { this.AuthTimeout = int.Parse(val); });
 
-            parser.ParseCommandLine(args);
-            parser.LogValues();
-        }
-        #endregion
-
-        #region Public Properties
-
-        public string URLS { get; private set; }
-        public string AUTHURLS { get; private set; }
-        public int MaxConnections { get; private set; }
-        public int MaxAuthConnections { get; private set; }
-        public string RootFolder { get; private set; }
-        public int AuthTimeout { get; private set; }
+        //    parser.ParseCommandLine(args);
+        //    parser.LogValues();
+        //}
 
         #endregion
+
+        #region public properties
+
+        public string URLS { get { return _configuration.URLS; } }
+        public string AUTHURLS { get { return _configuration.AUTHURLS; } }
+        public int MaxConnections { get { return _configuration.MaxConnections; } }
+        public int MaxAuthConnections { get { return _configuration.MaxAuthConnections; } }
+        public int AuthTimeoutMS { get { return _configuration.AuthTimeoutMS; } }
+        public string FileRequestHandlerPath { get { return _configuration.FileRequestHandlerPath; } }
+        #endregion
+
+        #region Private Data
+
+        private ConfigurationSettings _configuration;
+
+        #endregion
+
     }
 
     /// <summary>
@@ -49,39 +102,45 @@ namespace Middleware
     /// </summary>
     class Program
     {
+        #region Main Entry Point
+
         /// <summary>
         /// Main Entry point into process.
         /// </summary>
         static void Main(string[] args)
         {
-            if(args.Length == 0)
-            {
-                logger.Log(LogLevel.Info, @"syntax: Middleware <port (8080)> <max connections (10)> <root (//_root = (C:\Projects\Middleware\Middleware)>");
-            }
-
-            var config = new MiddlewareConfig(args);
+            logger.Info("Starting Middleware process...");
+            var config = new MiddlewareConfig("MiddlewareConfig.xml", logger);
 
             IMessageStats stats = new MessageStats("dev", config.MaxConnections);
             IAuthenticationHandler authHandler = new DefaultAuthenticationHandler();
 
+            //Initialise authentication server listener and endpoint listener...
             WSServer authServer = InitialiseAuthenticationServer(config, authHandler, stats);
             WSServer server = InitialiseEndpointServer(config, authHandler, stats);
 
             logger.Log(LogLevel.Info, "server initialised");
 
-            _shutdownEvent.WaitOne();
-
-            logger.Log(LogLevel.Info, "shutting down server");
-
-            authServer.Stop();
-            server.Stop();
-
+            //Wait until user shuts down the application...
             Console.CancelKeyPress += (sender, e) =>
             {
                 e.Cancel = true;
                 _shutdownEvent.Set();
             };
+
+            _shutdownEvent.WaitOne();
+
+            logger.Log(LogLevel.Info, "shutting down server");
+
+            //cleanup...
+            authServer.Stop();
+            server.Stop();
+
         }
+
+        #endregion
+
+        #region Private Methods
 
         private static WSServer InitialiseEndpointServer(MiddlewareConfig config, 
                                                          IAuthenticationHandler authHandler,
@@ -98,11 +157,9 @@ namespace Middleware
             logger.Log(LogLevel.Info, "initialising endpoint server...");
             EndpointManager manager = new EndpointManager(messageHandler, authHandler, stats);
 
-            WSServer server = new Endpointserver(manager, config.RootFolder, stats);
-            Task.Factory.StartNew(() =>
-            {
-                server.Start(config.URLS.Split(','), config.MaxConnections);
-            });
+            var fileRequestManager = new FileRequestManager(config.FileRequestHandlerPath);
+            WSServer server = new Endpointserver(manager, stats, fileRequestManager);
+            server.Start(config.URLS.Split(','), config.MaxConnections);
             return server;
         }
 
@@ -110,25 +167,23 @@ namespace Middleware
                                                          IAuthenticationHandler rootAuthHandler,
                                                          IMessageStats stats)
         {
-            AuthRequestCache authCache = new AuthRequestCache(config.AuthTimeout);
+            AuthRequestCache authCache = new AuthRequestCache(config.AuthTimeoutMS);
             var messageHandler = new AuthLoginResponseHandler(authCache);
             messageHandler.AddHandler(new AuthRegisterMessageHandler(rootAuthHandler, authCache));
 
             logger.Log(LogLevel.Info, "initialising auth endpoint server...");
             EndpointManager manager = new AuthenticationManager(messageHandler, rootAuthHandler, stats);
 
-            WSServer server = new WSServer(manager);
-            Task.Factory.StartNew(() =>
-            {
-                server.Start(config.AUTHURLS.Split(','), config.MaxAuthConnections);
-            });
+            var server = new WSServer(manager);
+            server.Start(config.AUTHURLS.Split(','), config.MaxAuthConnections);
             return server;
         }
 
+        #endregion
+
         #region Private Static Data Members
 
-        static AutoResetEvent _shutdownEvent = new AutoResetEvent(false);
-
+        private static AutoResetEvent _shutdownEvent = new AutoResetEvent(false);
         //logger instance
         private static Logger logger = LogManager.GetCurrentClassLogger();
 

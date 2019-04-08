@@ -1,8 +1,6 @@
-﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Middleware;
-using Moq;
-using Newtonsoft.Json;
+using MiddlewareInterfaces;
 
 namespace MiddlewareTests
 {

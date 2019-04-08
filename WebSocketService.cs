@@ -8,6 +8,7 @@ using System.Net.WebSockets;
 using System.IO;
 using System.Threading;
 using NLog;
+using MiddlewareInterfaces;
 
 namespace Middleware
 {
@@ -40,7 +41,7 @@ namespace Middleware
         /// <summary>
         /// Sed data on this connection
         /// </summary>
-        public async void SendData(string data)
+        public async void SendData(byte[] data)
         {
             if(_socketClosed == true)
             {
@@ -48,8 +49,7 @@ namespace Middleware
                 return;
             }
 
-            var encoded = Encoding.UTF8.GetBytes(data);
-            var buffer = new ArraySegment<Byte>(encoded, 0, encoded.Length);
+            var buffer = new ArraySegment<Byte>(data, 0, data.Length);
 
             if(_socket.State != WebSocketState.Open)
             {
@@ -97,7 +97,9 @@ namespace Middleware
     {
         void NewConnection(WebSocket socket, string origin);
         void CloseConnection(WebSocket socket);
-        void DataRecevied(WebSocket socket, string data);
+        void DataRecevied(WebSocket socket, byte[] data);
+        bool ValidateUser(string userID);
+        void ProcessFileRequest(string query, Stream responseStream);
     }
 
     /// <summary>
@@ -131,6 +133,15 @@ namespace Middleware
         }
 
         /// <summary>
+        /// Method returns true if there is an authenticated endpoint with the specified ID
+        /// </summary>
+        public bool ValidateUser(string userID)
+        {
+            var allEndpoints = _endpoints.Values;
+            return allEndpoints.FirstOrDefault(e => e.Authenticated && e.Id == userID) != null;
+        }
+
+        /// <summary>
         /// Method called when a connection is closed remotely.
         /// </summary>
         public void CloseConnection(WebSocket socket)
@@ -150,13 +161,17 @@ namespace Middleware
         /// <summary>
         /// Method called when data is received on a connection.
         /// </summary>
-        public void DataRecevied(WebSocket socket, string data)
+        public void DataRecevied(WebSocket socket, byte[] data)
         {
             var connection = _LookupConnection(socket);
             if (connection != null)
             {
                 var endpoint = _endpoints[connection];
-                logger.Log(LogLevel.Trace, $"DataRecevied on endpoint {endpoint.Id}. data: {data}.");
+                if (logger.IsTraceEnabled)
+                {
+                    logger.Log(LogLevel.Trace, $"Data Recevied on endpoint {endpoint.Id}.");
+                    logger.Log(LogLevel.Trace, MiddlewareUtils.dumpMessageContents(data));
+                }
 
                 if (endpoint.Authenticated == false)
                 {
@@ -181,10 +196,18 @@ namespace Middleware
                 }
                 else
                 {
-                    logger.Log(LogLevel.Trace, $"Data reeived on endpoint {endpoint.Id}. Processing request...");
+                    //logger.Log(LogLevel.Trace, $"Data reeived on endpoint {endpoint.Id}. Processing request...");
                     endpoint.DataReceived(data);
                 }
             }
+        }
+
+        /// <summary>
+        /// Process an http file request.
+        /// </summary>
+        public void ProcessFileRequest(string query, Stream responseStream)
+        {
+            
         }
 
         #endregion
@@ -259,7 +282,7 @@ namespace Middleware
         /// <summary>
         /// Start listening for connections.
         /// </summary>
-        public void Start(string[] urls, int maxConnections)
+        public async void Start(string[] urls, int maxConnections)
         {
             foreach (var url in urls)
             {
@@ -268,20 +291,24 @@ namespace Middleware
 
             _httpListener.Start();
 
-            var sem = new Semaphore(maxConnections, maxConnections);
-            while (true)
-            {
-                sem.WaitOne();
-#pragma warning disable 4014
-                //var context = await _httpListener.GetContextAsync();
-                _httpListener.GetContextAsync().ContinueWith(async (t) =>
-                {
-                    var context = await t;
-                    _ProcessConnection(context);
-                    sem.Release();
-                });
-#pragma warning restore 4014
-            }
+            await _ProcessConnection();
+
+            //            var sem = new Semaphore(maxConnections, maxConnections);
+            //            while (true)
+            //           {
+            //                sem.WaitOne();
+            //#pragma warning disable 4014
+            //var context = await _httpListener.GetContextAsync();
+            //_httpListener.GetContextAsync().ContinueWith(async (t) =>
+            //{
+            //    var context = await t;
+            //    _ProcessConnection(context);
+            //    sem.Release();
+            //});
+            //#pragma warning restore 4014
+            //               var context = await _httpListener.GetContextAsync();
+            //               _ProcessConnection(context);
+            //            }
         }
 
         /// <summary>
@@ -299,7 +326,7 @@ namespace Middleware
         /// <summary>
         /// Read data from a connection.
         /// </summary>
-        private async Task<string> _readDatafromSocket(WebSocket ws)
+        private async Task<byte[]> _readDatafromSocket(WebSocket ws)
         {
             //now we can start to asyncronsly receive data on this socket
             ArraySegment<Byte> buffer = new ArraySegment<byte>(new Byte[8192]);
@@ -317,10 +344,9 @@ namespace Middleware
                 while (!result.EndOfMessage);
 
                 logger.Log(LogLevel.Trace, $"Total bytes read from socket: {totalRead}");
-                ms.Seek(0, SeekOrigin.Begin);
+                //ms.Seek(0, SeekOrigin.Begin);
 
-                using (var reader = new StreamReader(ms, Encoding.UTF8))
-                    return reader.ReadToEnd();
+                return ms.ToArray();
             }
         }
 
@@ -357,35 +383,44 @@ namespace Middleware
         /// <summary>
         /// Method called when a new connection is received on the listening socket.
         /// </summary>
-        private async void _ProcessConnection(HttpListenerContext context)
+        private async Task _ProcessConnection()
         {
-            var authKey = GetDecryptedHeaderValue(context.Request, MessageHeaders.AUTHENTICATION_KEY);
-            if (context.Request.IsWebSocketRequest == true)
+            try
             {
-                HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
-                logger.Log(LogLevel.Info, "Websocket Connection received.");
-
-                WebSocket ws = webSocketContext.WebSocket;
-                var origin = GetHeaderValue(context.Request, MessageHeaders.CLIENTLOCATION, webSocketContext.Origin);
-                _manager.NewConnection(ws, origin);
-                while (ws.State == WebSocketState.Open)
+                var context = await _httpListener.GetContextAsync();
+                var ret = _ProcessConnection();
+                if (context.Request.IsWebSocketRequest == true)
                 {
-                    try
+                    HttpListenerWebSocketContext webSocketContext = await context.AcceptWebSocketAsync(null);
+                    logger.Log(LogLevel.Info, "Websocket Connection received.");
+
+                    WebSocket ws = webSocketContext.WebSocket;
+                    var origin = GetHeaderValue(context.Request, MessageHeaders.CLIENTLOCATION, webSocketContext.Origin);
+                    _manager.NewConnection(ws, origin);
+                    while (ws.State == WebSocketState.Open)
                     {
-                        string data = await _readDatafromSocket(ws);
-                        _manager.DataRecevied(ws, data);
+                        try
+                        {
+                            byte[] data = await _readDatafromSocket(ws);
+                            _manager.DataRecevied(ws, data);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Log(LogLevel.Error, ex);
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        logger.Log(LogLevel.Error, ex);
-                    }
+                    logger.Log(LogLevel.Info, "Connection closed.");
+                    _manager.CloseConnection(ws);
                 }
-                logger.Log(LogLevel.Info, "Connection closed.");
-                _manager.CloseConnection(ws);
+                else
+                {
+                    _ProcessHttpRequest(context);
+                }
+                await ret;
             }
-            else
+            catch(Exception ex)
             {
-                _ProcessHttpRequest(context);
+                logger.Info($"Error Listening on socket: {ex.Message}");
             }
         }
 
@@ -396,7 +431,7 @@ namespace Middleware
         #region Private Data Members
 
         private HttpListener _httpListener;
-        private readonly ISocketManager _manager;
+        protected readonly ISocketManager _manager;
 
         //logger instance
         private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -416,12 +451,16 @@ namespace Middleware
         /// <summary>
         /// Constructor.
         /// </summary>
-        public Endpointserver(ISocketManager manager, string root, IMessageStats stats)  :
+        public Endpointserver(ISocketManager manager, IMessageStats stats, FileRequestManager fileRequestManager)  :
             base(manager)
         {
-            _root = root;
             _stats = stats;
+            _fileRequestManager = fileRequestManager;
         }
+
+        #endregion
+
+        #region Protected Methods
 
         /// <summary>
         /// Process a http request. If an index request, return the statistics page.
@@ -431,41 +470,59 @@ namespace Middleware
             //standard http request. if url spcified then open file from fs
             //othwerwise return full stats page
             logger.Log(LogLevel.Info, $"processing http request: {context.Request.RawUrl}");
-            string result = null;
-            if (context.Request.RawUrl != "/")
+            logger.Log(LogLevel.Info, $"remote address : {context.Request.RemoteEndPoint.Address}");
+
+            var response = context.Response;
+            var error = "";
+            string contentType = null;
+
+            try
             {
-                try
+                var query = new QueryParams(context.Request);
+                var queryParameter = query.ValidateParameters("session", _manager.ValidateUser);
+
+                if(_fileRequestManager.HandleFileRequest(query.Identifier, queryParameter, response.OutputStream, out contentType))
                 {
-                    var filename = Path.Combine(_root, context.Request.RawUrl.Trim('/'));
-                    using (var indexFile = new StreamReader(filename))
-                    {
-                        result = indexFile.ReadToEnd();
-                    }
+                    response.StatusCode = 200;
                 }
-                catch (FileNotFoundException) { }
+                else
+                {
+                    response.StatusCode = 404;
+                    error = "Unknown Request";
+                }
             }
-            else
+            catch(UnauthenticatedUserException)
             {
-                result = _stats.ToXML();
+                logger.Error("Unauthenticated request");
+                response.StatusCode = 406;
             }
-            if (result != null)
+            catch (Exception ex)
             {
-                result += "\n";
-                var encoded = Encoding.UTF8.GetBytes(result);
-                //await context.Response.OutputStream.WriteAsync(encoded, 0, encoded.Length);
-                context.Response.Close(encoded, false);
+                logger.Error(ex.Message);
+                error = "Internal server error";
+                response.StatusCode = 500;
             }
+
+            if (string.IsNullOrEmpty(error) == false)
+            {
+                MiddlewareUtils.SerialiseToStream(response.OutputStream, error);
+            }
+
+            response.ContentType = contentType;
+            response.OutputStream.Close();
+            response.Close();
+
         }
 
         #endregion
 
         #region Private Data Members
 
-        private string _root;
-        private IMessageStats _stats;
+        private readonly IMessageStats _stats;
 
         //logger instance
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly FileRequestManager _fileRequestManager;
 
 
         #endregion
@@ -476,10 +533,16 @@ namespace Middleware
     /// </summary>
     class AuthenticationManager : EndpointManager
     {
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public AuthenticationManager(IMessageHandler handler, IAuthenticationHandler authHandler, IMessageStats stats) : base(handler, authHandler, stats)
         {
         }
 
+        /// <summary>
+        /// Log a new connection.
+        /// </summary>
         protected override void LogNewConnection(IEndpoint endpoint, LoginPayload payload)
         {
             _stats.NewConnection(endpoint.Id,
@@ -488,6 +551,9 @@ namespace Middleware
                                 payload.Version, true);
         }
 
+        /// <summary>
+        /// Log a close connection
+        /// </summary>
         protected override void LogCloseConnection(IEndpoint endpoint)
         {
             _stats.CloseConnection(endpoint.Id, true);

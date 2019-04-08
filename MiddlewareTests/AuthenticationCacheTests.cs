@@ -16,7 +16,7 @@ namespace MiddlewareTests
         {
             string requestid = "1234";
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
-            cache.AddNewAuthRequest(requestid);
+            cache.AddNewAuthRequest(null,requestid);
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
             Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
@@ -35,23 +35,26 @@ namespace MiddlewareTests
         [TestMethod]
         public void WhenUpdatingValidAuthResult()
         {
+            string sourceid = "abc";
             string requestid = "1234";
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
-            cache.AddNewAuthRequest(requestid);
+            cache.AddNewAuthRequest(sourceid, requestid);
             AuthResult template = new AuthResult { Result = AuthResult.ResultType.SUCCESS, Message = "ok" };
             cache.UpdateAuthResult(requestid, template);
             var result = cache.WaitForAuthResult(requestid);
             Assert.IsNotNull(result);
             Assert.AreEqual(AuthResult.ResultType.SUCCESS, result.Result);
             Assert.AreEqual(result.Message, "ok");
+            Assert.AreEqual(sourceid, result.ConnectionId);
         }
 
         [TestMethod]
         public void WhenUpdatingInValidAuthResult()
         {
+            string sourceid = "abc";
             string requestid = "1234";
             AuthRequestCache cache = new AuthRequestCache(100); //wait for 100 ms
-            cache.AddNewAuthRequest(requestid);
+            cache.AddNewAuthRequest(sourceid, requestid);
             AuthResult template = new AuthResult { Result = AuthResult.ResultType.FAILED, Message = "bum" };
             var ret = cache.UpdateAuthResult(requestid, template);
             Assert.IsTrue(ret);
@@ -59,6 +62,7 @@ namespace MiddlewareTests
             Assert.IsNotNull(result);
             Assert.AreEqual(AuthResult.ResultType.FAILED, result.Result);
             Assert.AreEqual(result.Message, "bum");
+            Assert.AreEqual(0, result.ConnectionId);
         }
     }
 }

@@ -235,7 +235,7 @@ namespace MiddlewareNetClient
                 WebSocketException ex = new WebSocketException("net_webstatus_ConnectFailure", innerException);
                 throw ex;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 this.ConnectExceptionCleanup(httpWebResponse);
                 throw;

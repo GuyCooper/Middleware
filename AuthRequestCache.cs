@@ -21,9 +21,12 @@ namespace Middleware
             _authTimeout = timeout;
         }
 
-        public void AddNewAuthRequest(string requestId)
+        public void AddNewAuthRequest(string connectionId, string requestId)
         {
-            var authEventPair = new AuthResultEventPair(new ManualResetEvent(false), new AuthResult());
+            var authEventPair = new AuthResultEventPair(new ManualResetEvent(false), new AuthResult
+            {
+                ConnectionId = connectionId
+            });
             _pendingAuthRequests.Add(requestId, authEventPair);
         }
 

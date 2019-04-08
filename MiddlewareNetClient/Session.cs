@@ -16,7 +16,7 @@ namespace MiddlewareNetClient
     /// </summary>
     public interface ISession
     {
-        void SendMessage(string message);
+        void SendMessage(byte[] message);
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ namespace MiddlewareNetClient
         /// <summary>
         /// Send data to websocket. add it to send queue
         /// </summary>
-        public void SendMessage(string message)
+        public void SendMessage(byte[] message)
         {
             _sendQueue.Add(message);
         }
@@ -65,7 +65,7 @@ namespace MiddlewareNetClient
                         //_connectEvent.Set();
                         while (_ws.State == WebSocketState.Open)
                         {
-                            string data = await _readDatafromSocket(_ws);
+                            byte[] data = await _readDatafromSocket(_ws);
                             _manager.OnMessageCallback(this, data);
                         }
                     }
@@ -126,12 +126,12 @@ namespace MiddlewareNetClient
         {
             while (_shutdownSendEvent.WaitOne(0) == false)
             {
-                string message;
+                byte[] message;
                 if(_sendQueue.TryTake(out message, 100) == true)
                 {
                     if (_ws.State == WebSocketState.Open)
                     {
-                        ArraySegment<byte> bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
+                        ArraySegment<byte> bytesToSend = new ArraySegment<byte>(message);
                         var result = _ws.SendAsync(bytesToSend, WebSocketMessageType.Text, true, CancellationToken.None);
                         result.Wait();
                     }
@@ -142,7 +142,7 @@ namespace MiddlewareNetClient
         /// <summary>
         /// Helper method for reading data off the websocket
         /// </summary>
-        private async Task<string> _readDatafromSocket(WebSocket ws)
+        private async Task<byte[]> _readDatafromSocket(WebSocket ws)
         {
             //now we can start to asyncronsly receive data on this socket
             ArraySegment<Byte> buffer = new ArraySegment<byte>(new Byte[8192]);
@@ -159,8 +159,7 @@ namespace MiddlewareNetClient
 
                 ms.Seek(0, SeekOrigin.Begin);
 
-                using (var reader = new StreamReader(ms, Encoding.UTF8))
-                    return reader.ReadToEnd();
+                return ms.ToArray();
             }
         }
 
@@ -188,7 +187,7 @@ namespace MiddlewareNetClient
 
         //producer / consumer collection for sending data to websocket. Only a single call to senddataastnc can be
         //made at any time so this allows multiple threads to senddata on this class concurrently
-        private readonly BlockingCollection<string> _sendQueue = new BlockingCollection<string>();
+        private readonly BlockingCollection<byte[]> _sendQueue = new BlockingCollection<byte[]>();
 
         //logger instance
         private static Logger logger = LogManager.GetCurrentClassLogger();

@@ -112,7 +112,7 @@ namespace Middleware
             }
             else if(message.Type == MessageType.UPDATE)
             {
-                if(string.IsNullOrEmpty(message.Payload) == false)
+                if(message.Payload != null)
                 {
                     channeldata.DataUpdates += message.Payload.Length;
                     if(connection != null)
