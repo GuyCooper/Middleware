@@ -13,26 +13,26 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiddlewareNetClient", "Midd
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Release|x64 = Release|x64
+		Debug|Middleware = Debug|Middleware
+		Release|Middleware = Release|Middleware
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Debug|x64.ActiveCfg = Debug|x64
-		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Debug|x64.Build.0 = Debug|x64
-		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Release|x64.ActiveCfg = Release|x64
-		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Release|x64.Build.0 = Release|x64
-		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Debug|x64.ActiveCfg = Debug|x64
-		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Debug|x64.Build.0 = Debug|x64
-		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|x64.ActiveCfg = Release|x64
-		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|x64.Build.0 = Release|x64
-		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|x64.ActiveCfg = Debug|x64
-		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|x64.Build.0 = Debug|x64
-		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|x64.ActiveCfg = Release|x64
-		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|x64.Build.0 = Release|x64
-		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Debug|x64.ActiveCfg = Debug|x64
-		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Debug|x64.Build.0 = Debug|x64
-		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Release|x64.ActiveCfg = Release|x64
-		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Release|x64.Build.0 = Release|x64
+		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Debug|Middleware.ActiveCfg = Debug|x64
+		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Debug|Middleware.Build.0 = Debug|x64
+		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Release|Middleware.ActiveCfg = Release|x64
+		{B6C63B5E-3E21-40C0-8686-478D8C6A6AFC}.Release|Middleware.Build.0 = Release|x64
+		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Debug|Middleware.ActiveCfg = Debug|x64
+		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Debug|Middleware.Build.0 = Debug|x64
+		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|Middleware.ActiveCfg = Release|x64
+		{F80EA499-140E-40CA-BADC-0CB4C886587D}.Release|Middleware.Build.0 = Release|x64
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|Middleware.ActiveCfg = Debug|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Debug|Middleware.Build.0 = Debug|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|Middleware.ActiveCfg = Release|Any CPU
+		{B4CD8390-6FBD-4D51-97B1-C4F8E76D008E}.Release|Middleware.Build.0 = Release|Any CPU
+		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Debug|Middleware.ActiveCfg = Debug|Any CPU
+		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Debug|Middleware.Build.0 = Debug|Any CPU
+		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Release|Middleware.ActiveCfg = Release|Any CPU
+		{152D50D9-E40E-414D-A789-0707FAA0BE78}.Release|Middleware.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

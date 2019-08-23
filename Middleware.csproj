@@ -35,6 +35,9 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="DataEncryption">
+      <HintPath>..\..\DataEncryption\bin\Release\DataEncryption.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -63,13 +66,14 @@
     <Compile Include="AuthRequestHandler.cs" />
     <Compile Include="Channels.cs" />
     <Compile Include="ConfigParser.cs" />
+    <Compile Include="Configuration.cs" />
     <Compile Include="Endpoint.cs" />
     <Compile Include="ExternalAuthenticationHandler.cs" />
     <Compile Include="FileRequestManager.cs" />
     <Compile Include="Handlers.cs" />
     <Compile Include="LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="MessageStats.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="Middleware.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="WebSocketService.cs" />
@@ -96,7 +100,13 @@
       <Name>MiddlewareInterfaces</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>C:\Projects\DataEncryption\bin\Release\Encrypter.exe E $(ProjectDir)MiddlewareConfig.xml $(TargetDir)MiddlewareConfig.enc CERT_SIGN_CONFIGURATION</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

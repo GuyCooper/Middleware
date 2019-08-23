@@ -63,3 +63,4 @@ packages
 /InvestmentBuilderWeb/InvestmentBuilderWeb/Content/InvestmentBuilderWeb - Copy.css
 /TestClient/scripts/uuid
 /TestClient/Middleware/
+*.user
