@@ -4,6 +4,6 @@
   <authurls>http://localhost:9092/</authurls>
   <maxconnections>10</maxconnections>
   <maxauthconnections>1</maxauthconnections>
-  <filehandlerpath>C:\Projects\InvestmentBuilder\InvestmentBuilderFileHandler\bin\Debug</filehandlerpath>
+  <filehandlerpath>C:\Projects\InvestmentBuilder\InvestmentBuilderFileHandler\bin\Release</filehandlerpath>
   <authtimeoutms>30000</authtimeoutms>
 </configuration>
